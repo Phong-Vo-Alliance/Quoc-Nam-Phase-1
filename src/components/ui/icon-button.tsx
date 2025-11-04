@@ -6,14 +6,15 @@ interface IconButtonProps extends React.ComponentProps<typeof Button> {
   label?: string; // accessible label (tooltip)
 }
 
-export function IconButton({ icon, label, ...props }: IconButtonProps) {
+export function IconButton({ icon, label, className, ...props }: IconButtonProps) {
   return (
     <Button
       variant="ghost"
       size="icon"
       aria-label={label}
       title={label}
-      className="text-sky-600 hover:bg-sky-50"
+      className={`text-brand-600 hover:bg-brand-50 hover:text-brand-700 
+                  hover:border hover:border-brand-600 focus-visible:ring-brand-600 ${className}`}
       {...props}
     >
       {icon}
