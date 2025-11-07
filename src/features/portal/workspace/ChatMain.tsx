@@ -1,8 +1,11 @@
 import React from 'react';
-import { Search, PanelRightClose, PanelRightOpen, Eye, Smile, MessageSquareText, Paperclip, Image as ImageIcon, AlarmClock, Type } from 'lucide-react';
+import { Search, PanelRightClose, PanelRightOpen, Eye, Smile, MessageSquareText, Paperclip, Image as ImageIcon, AlarmClock, Type, SendHorizonal } from 'lucide-react';
 import { IconButton } from '@/components/ui/icon-button';
 import { Avatar, Badge } from '../components';
-import type { Task } from '../types';
+import type { Message, Task, PinnedMessage, FileAttachment } from '../types';
+import { MessageBubble } from "@/features/portal/components/MessageBubble";
+import { mockMessages } from "@/data/mockMessages";
+import { convertToPinnedMessage } from "@/features/portal/utils/convertToPinnedMessage";
 
 
 const btn = (active = false) =>
@@ -12,6 +15,8 @@ const inputCls =
 
 
 export const ChatMain: React.FC<{
+  messages: Message[];
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   myWork: Task[];
   showRight: boolean;
   setShowRight: (v: boolean) => void;
@@ -21,10 +26,50 @@ export const ChatMain: React.FC<{
   setQ: (v: string) => void;
   searchInputRef: React.RefObject<HTMLInputElement | null>;
   onOpenCloseModalFor: (id: string) => void;
-  openPreview: (file: { name: string; url: string; type: 'pdf' | 'image' }) => void;
-}> = ({ myWork, showRight, setShowRight, showSearch, setShowSearch, q, setQ, searchInputRef, onOpenCloseModalFor, openPreview }) => {
+  openPreview: (file: FileAttachment) => void;
+  onTogglePin: (msg: Message) => void; 
+}> = ({ messages, setMessages, myWork, showRight, setShowRight, showSearch, setShowSearch, q, setQ, searchInputRef, onOpenCloseModalFor, openPreview, onTogglePin }) => {
   const [showCloseMenu, setShowCloseMenu] = React.useState(false);
 
+  // const [messages, setMessages] = React.useState<Message[]>(mockMessages as unknown as Message[]);
+  const [inputValue, setInputValue] = React.useState("");
+  const [pinnedMessages, setPinnedMessages] = React.useState<PinnedMessage[]>([]);
+  // const handlePinToggle = (m: any) =>
+  //   setMessages((prev) => prev.map((x) => (x.id === m.id ? { ...x, isPinned: !x.isPinned } : x)));
+  const currentChatId = "chat-01";
+  const currentGroupName = "Vận Hành Kho – Đổi Trả";
+
+  const handlePinToggle = (msg: Message) => {
+    setPinnedMessages((prev) =>
+      prev.some((m) => m.id === msg.id)
+        ? prev.filter((m) => m.id !== msg.id)
+        : [...prev, convertToPinnedMessage(msg, currentChatId, currentGroupName)]
+    );
+  };
+ 
+  const handleOpenFile = (msg: Message) => openPreview(msg.fileInfo!);
+  // (m: any) => {
+  //   // nếu muốn dùng preview pdf/image sẵn có của bạn, gọi hàm openPreview/file viewer tại đây
+  //   //console.log("Open file:", m.fileInfo?.url);
+  // };
+
+  const handleOpenImage = (msg: Message) => openPreview(msg.fileInfo!);
+
+  const handleSend = () => {
+    if (!inputValue.trim()) return;
+    const newMsg: Message = {
+      id: Date.now().toString(),
+      type: "text",
+      sender: "Quốc Nam Sup",
+      content: inputValue.trim(),
+      time: new Date().toISOString(),
+      isMine: true,
+      isPinned: false,
+      isSystem: false,
+    };
+    setMessages((prev) => [...prev, newMsg]);
+    setInputValue("");
+  };
 
     return (
       <main className="flex flex-col rounded-2xl border border-gray-300 bg-white shadow-sm h-full min-h-0">
@@ -65,84 +110,35 @@ export const ChatMain: React.FC<{
 
 
         {/* messages */}
-        <div className="flex-1 overflow-y-auto space-y-3 p-4 min-h-0 bg-gray-100">
-          <div className="flex flex-col items-end gap-3 w-full">
-            <div className="max-w-[70%] rounded-l-2xl rounded-tr-md bg-brand-50 px-4 py-2 shadow-sm">
-              <div className="text-sm text-gray-800 whitespace-pre-line leading-relaxed">
-                <span className="text-brand-700 font-medium">@KHO HÀNG QUỐC NAM</span> dạ em gửi đơn đặt hàng vựa và phiếu rút hàng sáng mai ạ
-              </div>
-              <div className="mt-1 text-[10px] text-gray-400/80 text-right">18:50</div>
-            </div>
-            <div className="bg-gray-200 text-gray-700 text-[11px] px-3 py-0.5 rounded-full mx-auto my-1">10/10/2025 06:51</div>
-            <div className="max-w-[70%] rounded-l-2xl rounded-tr-md bg-brand-50 px-4 py-2 shadow-sm">
-              <div className="text-sm text-gray-800 whitespace-pre-line leading-relaxed">
-                <span className="text-brand-700 font-medium">@KHO HÀNG QUỐC NAM</span> dạ anh sáng nay qua đồ xong anh thực kiểm lại lượng Đùi Gà Tỏi bên kho dùm em với nha, em cảm ơn ạ
-              </div>
-              <div className="mt-1 text-[10px] text-gray-400/80 text-right">06:51</div>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-2 max-w-[80%]">
-            <Avatar name="KHO HÀNG QUỐC NAM" />
-            <div className="flex flex-col bg-white border rounded-2xl shadow-sm px-4 py-2 w-full">
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">KHO HÀNG QUỐC NAM</div>
-              <div className="bg-brand-50 rounded-lg px-3 py-2 mb-2 border-l-4 border-sky-400">
-                <div className="text-sm font-semibold text-gray-700 mb-1">Quốc Nam Sup</div>
-                <div className="text-sm text-gray-800 whitespace-pre-line leading-relaxed">
-                  <span className="text-brand-700 font-medium">@KHO HÀNG QUỐC NAM</span> dạ anh tầm 40p nữa xe cá về, anh chuẩn bị để xuống hàng luôn nha, anh cập nhật thông tin giúp em, em cảm ơn ạ
-                </div>
-              </div>
-              <div className="text-sm text-gray-800 whitespace-pre-line leading-relaxed">
-                <span className="text-brand-700 font-medium">@Quốc Nam Sup</span> đội kho cảng đã cập nhật thông tin, xin cảm ơn
-              </div>
-              <div className="mt-1 text-xs text-gray-400">15:10</div>
-            </div>
-          </div>
-
-
-          <div className="flex items-start gap-2 max-w-[75%]">
-            <Avatar name="KHO HÀNG QUỐC NAM" />
-            <div className="flex flex-col bg-white border rounded-2xl shadow-sm px-4 py-2">
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">KHO HÀNG QUỐC NAM</div>
-              <div className="mt-1 text-sm text-gray-800 whitespace-pre-line leading-relaxed">{`Ngày 25 tháng 10\nNhập hàng từ cửa hàng\nCá cam 160t -12,5 =2000\nCá sapa 141t -13. =1833`}</div>
-              <div className="mt-1 text-xs text-gray-400">18:15</div>
-            </div>
-          </div>
-
-
-          <div className="flex items-start gap-2 max-w-[75%]">
-            <Avatar name="KHO HÀNG QUỐC NAM" />
-            <div className="flex flex-col bg-white border rounded-2xl shadow-sm px-4 py-2">
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">KHO HÀNG QUỐC NAM</div>
-              <div className="mt-1 text-sm text-gray-800 whitespace-pre-line leading-relaxed"><div className="h-28 w-full rounded-md bg-gray-100">Picture</div></div>
-              <div className="mt-1 text-xs text-gray-400">18:15</div>
-            </div>
-          </div>
-
-          <div className="flex flex-col items-end gap-3 w-full">
-            <div className="bg-gray-200 text-gray-700 text-[11px] px-3 py-0.5 rounded-full mx-auto my-1">10/10/2025 14:23</div>
-            <div role="button" tabIndex={0} onClick={() => openPreview({ name: 'Phiếu giao hàng - chiều - 10.10.2025.pdf', url: '/mock/Delivery-10-10-2025.pdf', type: 'pdf' })} onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); openPreview({ name: 'Phiếu giao hàng - chiều - 10.10.2025.pdf', url: '/mock/Delivery-10-10-2025.pdf', type: 'pdf' }); } }} className="max-w-[70%] cursor-pointer rounded-l-2xl rounded-tr-md bg-brand-50 px-4 py-3 shadow-sm border border-sky-100">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-red-100"><span className="text-red-600 font-bold text-xs">PDF</span></div>
-                <div className="flex flex-col text-sm text-gray-800"><span className="font-semibold">Phiếu giao hàng - chiều - 10.10.2025.pdf</span><span className="text-xs text-gray-500">PDF • 40.22 KB</span></div>
-                <span className="ml-auto inline-flex items-center gap-1 text-xs text-brand-700"><Eye size={14} /> Xem nhanh</span>
-              </div>
-              <div className="mt-1 text-[10px] text-gray-400/80 text-right">14:23</div>
-            </div>
-            <div className="max-w-[70%] rounded-l-2xl rounded-tr-md bg-brand-50 px-4 py-2 shadow-sm border border-sky-100">
-              <div className="text-sm text-gray-800 whitespace-pre-line leading-relaxed"><span className="text-brand-700 font-medium">@KHO HÀNG QUỐC NAM</span> dạ em gửi phiếu rút hàng chiều nay ạ</div>
-              <div className="mt-1 text-[10px] text-gray-400/80 text-right">14:23</div>
-            </div>
-          </div>
+        {/* messages (refactor) */}
+        <div className="flex-1 overflow-y-auto space-y-1 p-4 min-h-0 bg-green-900/35">
+          {messages.map((msg, i) => (
+            <MessageBubble
+              key={msg.id}
+              data={msg}
+              prev={i > 0 ? messages[i - 1] : null}
+              next={i < messages.length - 1 ? messages[i + 1] : null}
+              // groupThresholdMs={3 * 60 * 1000} // (tuỳ chọn) gộp trong 3 phút
+              onReply={(m) => console.log("Reply to", m)}
+              onPin={onTogglePin}
+              onOpenFile={handleOpenFile}
+              onOpenImage={handleOpenImage}
+            />
+          ))}
         </div>
 
 
         <div className="border-t p-3 shrink-0">
           <div className="flex items-center gap-2">
-            <input className={`flex-1 ${inputCls}`} placeholder="Nhập tin nhắn…" />
-            <button title="Chọn emoji" className="rounded-lg border border-brand-200 bg-white px-2 py-2 text-brand-600 hover:bg-brand-50"><Smile size={18} /></button>
+            <input className={`flex-1 ${inputCls}`} placeholder="Nhập tin nhắn…" value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSend()} />
+            {/* <button title="Chọn emoji" className="rounded-lg border border-brand-200 bg-white px-2 py-2 text-brand-600 hover:bg-brand-50"><Smile size={18} /></button> */}
             <button title="Tin nhắn mẫu" className="rounded-lg border border-brand-200 bg-white px-2 py-2 text-brand-600 hover:bg-brand-50"><MessageSquareText size={18} /></button>
-            <button className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700">Gửi</button>
+            <button
+              onClick={handleSend}
+              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700">
+                <SendHorizonal className="h-4 w-4" /></button>
           </div>
           <div className="mt-2 flex items-center gap-4 text-gray-600">
             <IconButton label="Đính kèm" icon={<Paperclip className="h-4 w-4" />} />

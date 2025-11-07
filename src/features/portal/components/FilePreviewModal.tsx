@@ -1,8 +1,8 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { FileAttachment } from "@/features/portal/types";
 
-
-export type PreviewFile = { name: string; url: string; type: 'pdf' | 'image' } | null;
+export type PreviewFile = FileAttachment | null;
 
 
 export const FilePreviewModal: React.FC<{

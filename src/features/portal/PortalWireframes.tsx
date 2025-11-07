@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ToastContainer, CloseNoteModal, FilePreviewModal } from './components';
-import type { LeadThread, Task, ToastKind, ToastMsg } from './types';
+import type { LeadThread, Task, ToastKind, ToastMsg, FileAttachment } from './types';
 import { WorkspaceView } from './workspace/WorkspaceView';
 import { TeamMonitorView } from './lead/TeamMonitorView';
+import { MainSidebar } from "./components/MainSidebar";
 
 export default function PortalWireframes() {
   // ---------- shared UI state ----------
@@ -12,9 +13,11 @@ export default function PortalWireframes() {
   const [showAvail, setShowAvail] = useState(false);
   const [showMyWork, setShowMyWork] = useState(false);
   const [view, setView] = useState<'workspace' | 'lead'>('workspace');
+  const [workspaceMode, setWorkspaceMode] = useState<"default" | "pinned">("default");
   const [showRight, setShowRight] = useState(true);
   const [showSearch, setShowSearch] = useState(false);
   const [q, setQ] = useState('');
+  // const [showPinned, setShowPinned] = useState(false);
 
 
   // --- keyboard refs & shortcuts ---
@@ -67,7 +70,7 @@ export default function PortalWireframes() {
 
   // --- File preview modal state ---
   const [showPreview, setShowPreview] = useState(false);
-  const [previewFile, setPreviewFile] = useState<{ name: string; url: string; type: 'pdf' | 'image' } | null>(null);
+  const [previewFile, setPreviewFile] = useState<FileAttachment | null>(null);
 
 
   // helpers
@@ -165,68 +168,98 @@ export default function PortalWireframes() {
 
 
   // --- Preview handlers ---
-  const openPreview = (file: { name: string; url: string; type: 'pdf' | 'image' }) => {
+  const openPreview = (file: FileAttachment) => {
     setPreviewFile(file);
     setShowPreview(true);
   };
 
   return (
-    <div className="w-screen h-screen bg-gray-50 text-gray-800 overflow-hidden flex flex-col">
-      {/* Header */}
-      <div className="mx-auto w-full max-w-[1680px] px-2 py-2">
-        <div className="mt-0 flex items-center gap-2 text-sm">
-          <span className="text-gray-500">Chế độ hiển thị:</span>
-          <button onClick={() => setView('workspace')} className={`rounded-lg border px-3 py-1 transition ${view === 'workspace' ? 'bg-brand-600 text-white border-sky-600 shadow-sm' : 'bg-white text-brand-700 border-brand-200 hover:bg-brand-50'}`}>Workspace – Nhân viên</button>
-          <button onClick={() => setView('lead')} className={`rounded-lg border px-3 py-1 transition ${view === 'lead' ? 'bg-brand-600 text-white border-sky-600 shadow-sm' : 'bg-white text-brand-700 border-brand-200 hover:bg-brand-50'}`}>Team Monitor – Lead</button>
-        </div>
+    <div className="w-screen h-screen flex overflow-hidden bg-gray-50 text-gray-800">
+      {/* MainSidebar */}
+      <MainSidebar
+        activeView={view}
+        workspaceMode={workspaceMode}
+        onSelect={(key) => {
+          if (key === "logout") {
+            console.log("Logging out...");
+            return;
+          }
+          if (key === "pinned") {
+            // bật chế độ pinned trong workspace
+            setView("workspace");
+            setWorkspaceMode("pinned");
+            // setShowPinned(true);
+            return;
+          }
+
+          // Nếu user chọn workspace khi đang ở pinned → quay lại default
+          if (key === "workspace") {
+            setWorkspaceMode("default");
+            setView("workspace");
+            return;
+          }
+
+          setView(key); // 'lead'
+        }}
+      />
+
+      {/* Nội dung chính */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {view === 'workspace' ? (
+          <WorkspaceView
+            leftTab={leftTab}
+            setLeftTab={setLeftTab}
+            available={available}
+            myWork={myWork}
+            members={members}
+            showAvail={showAvail}
+            setShowAvail={setShowAvail}
+            showMyWork={showMyWork}
+            setShowMyWork={setShowMyWork}
+            handleClaim={handleClaim}
+            handleTransfer={handleTransfer}
+            openCloseModalFor={openCloseModalFor}
+            showRight={showRight}
+            setShowRight={setShowRight}
+            showSearch={showSearch}
+            setShowSearch={setShowSearch}
+            q={q}
+            setQ={setQ}
+            searchInputRef={searchInputRef}
+            openPreview={openPreview}
+            tab={tab}
+            setTab={setTab}
+            mode={mode}
+            setMode={setMode}
+            // showPinned={showPinned}
+            // setShowPinned={setShowPinned}
+            workspaceMode={workspaceMode}
+            setWorkspaceMode={setWorkspaceMode}
+          />
+        ) : (
+          <TeamMonitorView
+            leadThreads={leadThreads}
+            assignOpenId={assignOpenId}
+            setAssignOpenId={setAssignOpenId}
+            members={members}
+            onAssign={handleLeadAssign}
+          />
+        )}
+
+        {/* Modals */}
+        <CloseNoteModal
+          open={showCloseModal}
+          note={closeNote}
+          setNote={setCloseNote}
+          onConfirm={confirmClose}
+          onOpenChange={setShowCloseModal}
+        />
+        <FilePreviewModal open={showPreview} file={previewFile} onOpenChange={setShowPreview} />
+
+        {/* Toasts */}
+        <ToastContainer toasts={toasts} onClose={removeToast} />
       </div>
-
-
-      {view === 'workspace' ? (
-        <WorkspaceView
-          leftTab={leftTab}
-          setLeftTab={setLeftTab}
-          available={available}
-          myWork={myWork}
-          members={members}
-          showAvail={showAvail}
-          setShowAvail={setShowAvail}
-          showMyWork={showMyWork}
-          setShowMyWork={setShowMyWork}
-          handleClaim={handleClaim}
-          handleTransfer={handleTransfer}
-          openCloseModalFor={openCloseModalFor}
-          showRight={showRight}
-          setShowRight={setShowRight}
-          showSearch={showSearch}
-          setShowSearch={setShowSearch}
-          q={q}
-          setQ={setQ}
-          searchInputRef={searchInputRef}
-          openPreview={openPreview}
-          tab={tab}
-          setTab={setTab}
-          mode={mode}
-          setMode={setMode}
-        />
-      ) : (
-        <TeamMonitorView
-          leadThreads={leadThreads}
-          assignOpenId={assignOpenId}
-          setAssignOpenId={setAssignOpenId}
-          members={members}
-          onAssign={handleLeadAssign}
-        />
-      )}
-
-
-      {/* Modals */}
-      <CloseNoteModal open={showCloseModal} note={closeNote} setNote={setCloseNote} onConfirm={confirmClose} onOpenChange={setShowCloseModal} />
-      <FilePreviewModal open={showPreview} file={previewFile} onOpenChange={setShowPreview} />
-
-
-      {/* Toasts */}
-      <ToastContainer toasts={toasts} onClose={removeToast} />
     </div>
   );
+
 }

@@ -124,20 +124,36 @@ export const LeftSidebar: React.FC<{
               </ul>
             ) : (
               <ul className="divide-y p-2">
-                {['Nguyễn An', 'Trần Bình', 'Lê Chi', 'Phương Trúc'].map((name) => (
-                  <li key={name} className="flex items-center justify-between gap-3 rounded-lg p-2 hover:bg-brand-50">
-                    <div className="flex items-center gap-3">
-                      <Avatar name={name} />
+                  {[
+                    { name: 'Nguyễn An', role: 'Member' },
+                    { name: 'Trần Bình', role: 'Member' },
+                    { name: 'Lê Chi', role: 'Member' },
+                    { name: 'Phương Trúc', role: 'Leader' },
+                  ].map(({ name, role }) => (
+                    <li
+                      key={name}
+                      className="flex items-center justify-between gap-3 rounded-lg p-2 hover:bg-brand-50 transition-colors"
+                    >
                       <div>
-                        <div className="text-sm font-medium">{name}</div>
-                        <div className="text-xs text-gray-500">Phòng: CSKH</div>
+                        <div
+                          className={`text-sm font-medium ${role === 'Leader' ? 'text-brand-700' : 'text-gray-800'
+                            }`}
+                        >
+                          {name}
+                        </div>
+                        <div
+                          className={`text-xs ${role === 'Leader' ? 'text-brand-600 font-medium' : 'text-gray-500'
+                            }`}
+                        >
+                          {role}
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      <button className={btn(false)}>Nhắn tin</button>
-                    </div>
-                  </li>
-                ))}
+
+                      <div className="flex items-center gap-2 text-xs">
+                        <button className={btn(false)}>Nhắn tin</button>
+                      </div>
+                    </li>
+                  ))}
               </ul>
             )}
           </>
