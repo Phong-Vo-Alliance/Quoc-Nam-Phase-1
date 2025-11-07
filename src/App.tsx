@@ -1,6 +1,6 @@
 import React from "react";
 import "./App.css";
-import PortalWireframes from "./PortalWireframes";
+import PortalWireframes from "./features/portal/PortalWireframes";
 
 export default function App() {
   return <PortalWireframes />;
