@@ -1,162 +1,202 @@
-import React, { useState } from 'react';
-import { Avatar, Badge, Chip } from '../components';
-import type { Task } from '../types';
+import React from "react";
+import type { GroupChat } from '../types';
 
+/* ===================== Types (props mới) ===================== */
+type ChatTarget = { type: "group" | "dm"; id: string };
 
+export interface LeftSidebarProps {
+  currentUserId: string;
+
+  // Nhóm chat
+  groups: GroupChat[];
+  selectedGroup?: GroupChat;
+  onSelectGroup?: (groupId: string) => void;
+
+  // Tin nhắn cá nhân (không hiển thị avatar theo yêu cầu)
+  contacts: Array<{
+    id: string;
+    name: string;                // "Thu An"
+    role: "Leader" | "Member";   // hiển thị vai trò
+    online: boolean;             // trạng thái online/offline
+    lastMessage?: string;        // text | "[hình ảnh]" | "[pdf]"
+    lastTime?: string;           // nếu muốn (không bắt buộc)
+    unreadCount?: number;
+  }>;
+
+  // callback mở hội thoại
+  onSelectChat: (target: ChatTarget) => void;
+}
+
+/* ===================== UI helpers ===================== */
 const btn = (active = false) =>
-  `rounded-lg border px-3 py-1 transition ${active ? 'bg-brand-600 text-white border-sky-600 shadow-sm' : 'bg-white text-brand-700 border-brand-200 hover:bg-brand-50'}`;
+  `rounded-lg border px-3 py-1 transition ${
+    active
+      ? "bg-brand-600 text-white border-brand-600 shadow-sm"
+      : "bg-white text-brand-700 border-brand-200 hover:bg-brand-50"
+  }`;
+
 const inputCls =
-  'rounded-lg border px-3 py-2 text-sm border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-sky-300';
+  "rounded-lg border px-3 py-2 text-sm border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300";
 
+const rowCls =
+  "flex items-center gap-3 rounded-lg p-2 hover:bg-brand-50 cursor-pointer transition-colors";
 
-export const LeftSidebar: React.FC<{
-  leftTab: 'contacts' | 'messages';
-  setLeftTab: (v: 'contacts' | 'messages') => void;
-  available: Task[];
-  myWork: Task[];
-  members: string[];
-  showAvail: boolean;
-  showMyWork: boolean;
-  setShowAvail: (v: boolean) => void;
-  setShowMyWork: (v: boolean) => void;
-  onClaim: (task: Task) => void;
-  onTransfer: (id: string, newOwner: string, title?: string) => void;
-  onOpenCloseModal: (id: string) => void;
-}> = ({ leftTab, setLeftTab, available, myWork, members, showAvail, showMyWork, setShowAvail, setShowMyWork, onClaim, onTransfer, onOpenCloseModal }) => {
-  const [transferId, setTransferId] = useState<string | null>(null);
+const badgeUnread = (n?: number) =>
+  n && n > 0 ? (
+    <span className="ml-2 inline-flex min-w-[20px] justify-center rounded-full bg-brand-600 px-1.5 text-[10px] font-semibold text-white">
+      {n > 99 ? "99+" : n}
+    </span>
+  ) : null;
+
+const dotOnline = (on: boolean) => (
+  <span
+    className={`inline-block h-2 w-2 rounded-full ${
+      on ? "bg-emerald-500" : "bg-gray-300"
+    }`}
+  />
+);
+
+// Lấy ký tự viết tắt từ tên nhóm
+const initials = (name: string) =>
+  name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+/* ===================== Component ===================== */
+export const LeftSidebar: React.FC<LeftSidebarProps> = ({
+  currentUserId,
+  groups,
+  selectedGroup,
+  onSelectGroup,
+  contacts,
+  onSelectChat,
+}) => {
+  const [tab, setTab] = React.useState<"groups" | "contacts">("groups"); // mặc định: nhóm
+  const [q, setQ] = React.useState("");
+
+  // filter chung theo search
+  const match = (text?: string) =>
+    (text || "").toLowerCase().includes(q.trim().toLowerCase());
+
+  const filteredGroups = groups.filter(
+    (g) => match(g.name) || match(g.lastMessage) || match(g.lastSender)
+  );
+
+  const filteredContacts = contacts.filter(
+    (c) => match(c.name) || match(c.lastMessage)
+  );
 
   return (
     <aside className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-y-auto min-h-0">
+      {/* Header: Tabs + Search */}
       <div className="border-b p-3">
         <div className="flex items-center justify-between">
           <div className="font-medium">Tin nhắn</div>
           <div className="flex items-center gap-2 text-xs text-gray-500">
-            <button className={btn(leftTab === 'contacts')} onClick={() => { setLeftTab('contacts'); setShowAvail(false); setShowMyWork(false); }}>Liên hệ</button>
-            <button className={btn(leftTab === 'messages')} onClick={() => { setLeftTab('messages'); setShowAvail(false); setShowMyWork(false); }}>Tin nhắn</button>
+            <button className={btn(tab === "groups")} onClick={() => setTab("groups")}>
+              Nhóm
+            </button>
+            <button className={btn(tab === "contacts")} onClick={() => setTab("contacts")}>
+              Cá nhân
+            </button>
           </div>
         </div>
-        <div className="mt-2 flex items-center gap-2">
-          <input placeholder={leftTab === 'contacts' ? 'Tìm đồng nghiệp' : 'Tìm theo tiêu đề/thread'} className={`w-full ${inputCls}`} />
+
+        <div className="mt-2">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Tìm nhóm hoặc đồng nghiệp…"
+            className={`w-full ${inputCls}`}
+          />
         </div>
       </div>
 
-
-      {/* Action row */}
-      <div className="flex items-center gap-2 border-b p-3 text-sm shrink-0">
-        <button onClick={() => { setShowAvail(!showAvail); setShowMyWork(false); }} className={btn(showAvail)}>
-          Available <Chip>{available.length}</Chip>
-        </button>
-        <button onClick={() => { setShowMyWork(!showMyWork); setShowAvail(false); }} className={btn(showMyWork)}>
-          My Work <Chip>{myWork.length}</Chip>
-        </button>
-      </div>
-
-      {/* Panels */}
-      <div className="p-3 space-y-2">
-        {showAvail && (
-          <>
-            <div className="text-xs font-semibold text-gray-500">Hàng chờ nhận việc</div>
-            {available.map((task) => (
-              <div key={task.id} className="rounded-lg border p-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <div className="font-medium">{task.title}</div>
-                  <Badge type="waiting">Chờ phản hồi</Badge>
-                </div>
-                <div className="mt-1 text-xs text-gray-500">Kênh: Nội bộ • Tạo {task.createdAt}</div>
-                <div className="mt-2 flex items-center gap-2 text-xs">
-                  <button className={btn(false)}>Xem</button>
-                  <button className={btn(true)} onClick={() => onClaim(task)}>Nhận việc</button>
-                </div>
-              </div>
-            ))}
-            {available.length === 0 && <div className="text-xs text-gray-500">Không có việc chờ nhận.</div>}
-          </>
-        )}
-
-
-        {showMyWork && (
-          <>
-            <div className="text-xs font-semibold text-gray-500">Việc của tôi</div>
-            {myWork.map((r) => (
-              <div key={r.id} className="rounded-lg border p-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <div className="font-medium">{r.title}</div>
-                  <Badge type={r.status as any}>{r.status === 'processing' ? 'Đang xử lý' : r.status === 'waiting' ? 'Chờ phản hồi' : 'Đã chốt'}</Badge>
-                </div>
-                <div className="mt-1 text-xs text-gray-500">Cập nhật: {r.updatedAt || '—'}</div>
-                <div className="mt-2 flex items-center gap-2 text-xs">
-                  <button className={btn(false)}>Mở</button>
-                  <button className={btn(false)} onClick={() => setTransferId(r.id)}>Transfer</button>
-                  <button className={btn(false)} onClick={() => onOpenCloseModal(r.id)}>Đóng</button>
-                </div>
-                {transferId === r.id && (
-                  <div className="mt-2 flex items-center gap-2 text-xs">
-                    <select className={inputCls} defaultValue="" onChange={(e) => e.target.value && (onTransfer(r.id, e.target.value, r.title), setTransferId(null))}>
-                      <option value="" disabled>Chọn người nhận…</option>
-                      {members.map((m) => (<option key={m} value={m}>{m}</option>))}
-                    </select>
-                    <button className={btn(false)} onClick={() => setTransferId(null)}>Hủy</button>
-                  </div>
-                )}
-              </div>
-            ))}
-            {myWork.length === 0 && <div className="text-xs text-gray-500">Bạn chưa có việc nào.</div>}
-          </>
-        )}
-
-        {!showAvail && !showMyWork && (
-          <>
-            {leftTab === 'messages' ? (
-              <ul className="divide-y p-2">
-                {['Vận Hành Kho - Cân Hàng', 'Vựa', 'Vận Hành Kho - Đổi Trả', 'Vận Hành - Phế Phẩm', 'Hóa Đơn Nội Bộ'].map((name, idx) => (
-                  <li key={name} className="flex cursor-pointer items-center gap-3 rounded-lg p-2 hover:bg-brand-50">
-                    <Avatar name={idx === 0 ? 'Le Chi' : idx === 1 ? 'Nguyen An' : 'Tran Binh'} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between">
-                        <p className="truncate text-sm font-medium">{name}</p>
-                        <span className="text-xs text-gray-400">{idx === 0 ? '18:19' : '17:05'}</span>
-                      </div>
-                      <p className="truncate text-xs text-gray-500">Đã gửi PO & phiếu rút hàng…</p>
-                    </div>
-                    {idx === 0 ? <Badge type="processing">Đang xử lý</Badge> : <Badge type="waiting">Chờ phản hồi</Badge>}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <ul className="divide-y p-2">
-                  {[
-                    { name: 'Nguyễn An', role: 'Member' },
-                    { name: 'Trần Bình', role: 'Member' },
-                    { name: 'Lê Chi', role: 'Member' },
-                    { name: 'Phương Trúc', role: 'Leader' },
-                  ].map(({ name, role }) => (
-                    <li
-                      key={name}
-                      className="flex items-center justify-between gap-3 rounded-lg p-2 hover:bg-brand-50 transition-colors"
-                    >
-                      <div>
-                        <div
-                          className={`text-sm font-medium ${role === 'Leader' ? 'text-brand-700' : 'text-gray-800'
-                            }`}
-                        >
-                          {name}
-                        </div>
-                        <div
-                          className={`text-xs ${role === 'Leader' ? 'text-brand-600 font-medium' : 'text-gray-500'
-                            }`}
-                        >
-                          {role}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 text-xs">
-                        <button className={btn(false)}>Nhắn tin</button>
-                      </div>
-                    </li>
-                  ))}
-              </ul>
+      {/* Content */}
+      <div className="p-2">
+        {tab === "groups" ? (
+          <ul className="divide-y">
+            {filteredGroups.length === 0 && (
+              <div className="p-3 text-xs text-gray-500">Không có nhóm phù hợp.</div>
             )}
-          </>
+
+            {filteredGroups.map((g) => (
+              <li
+                key={g.id}
+                className={`${rowCls} ${selectedGroup?.id === g.id ? "bg-brand-50 ring-1 ring-brand-100" : ""}`}
+                onClick={() => onSelectGroup?.(g.id)}
+              >
+                {/* Avatar group (chỉ 1 avatar đơn) */}
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600/10 text-brand-700 border border-brand-100">
+                  <span className="text-[11px] font-semibold">{initials(g.name)}</span>
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between">
+                    <p className="truncate text-sm font-medium">{g.name}</p>
+                    {g.lastTime && (
+                      <span className="ml-2 shrink-0 text-xs text-gray-400">
+                        {g.lastTime}
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="truncate text-xs text-gray-500">
+                    {g.lastSender ? `${g.lastSender}: ` : ""}
+                    {g.lastMessage || ""}
+                  </p>
+                </div>
+
+                {badgeUnread(g.unreadCount)}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <ul className="divide-y">
+            {filteredContacts.length === 0 && (
+              <div className="p-3 text-xs text-gray-500">Không có liên hệ phù hợp.</div>
+            )}
+
+            {filteredContacts.map((c) => (
+              <li
+                key={c.id}
+                className={rowCls}
+                onClick={() => onSelectChat({ type: "dm", id: c.id })}
+              >
+                {/* Không hiển thị avatar theo yêu cầu */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-medium">{c.name}</p>
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-[10px] ${
+                          c.role === "Leader"
+                            ? "bg-brand-50 text-brand-700 border border-brand-200"
+                            : "bg-gray-50 text-gray-600 border border-gray-200"
+                        }`}
+                      >
+                        {c.role}
+                      </span>
+                      <span className="text-xs text-gray-500 flex items-center gap-1">
+                        {dotOnline(c.online)} {c.online ? "Online" : "Offline"}
+                      </span>
+                    </div>
+
+                    {c.unreadCount ? (
+                      <span className="ml-2 shrink-0">
+                        {badgeUnread(c.unreadCount)}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <p className="truncate text-xs text-gray-500">{c.lastMessage || ""}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </aside>

@@ -1,6 +1,6 @@
 import React from "react";
 import type { Message } from "../types";
-import { Eye, Star, StarOff, Reply, Quote } from "lucide-react";
+import { Eye, Star, StarOff, Reply, Quote, ClipboardPlus, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** Optional meta (giúp xác định nhóm/bo góc như Google Chat) */
@@ -419,6 +419,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             title={data.isPinned ? "Bỏ đánh dấu tin nhắn" : "Đánh dấu tin nhắn"}
           >
             {data.isPinned ? <StarOff size={14} /> : <Star size={14} />}
+          </button>
+          <button title="Giao Task" className="p-1 hover:bg-brand-50 rounded">
+            <ClipboardPlus className="w-4 h-4 text-brand-600" />
+          </button>
+          <button title="Đặt về Pending" className="p-1 hover:bg-amber-50 rounded">
+            <Clock className="w-4 h-4 text-amber-500" />
           </button>
         </div>
       </div>
