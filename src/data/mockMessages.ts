@@ -1,242 +1,263 @@
 import { Message } from "@/features/portal/types";
+
 import img1 from "@/assets/message/img/img1.jpg";
 import img2 from "@/assets/message/img/img2.jpg";
 import img3 from "@/assets/message/img/img3.jpg";
 import img4 from "@/assets/message/img/img4.jpg";
 
-export const mockMessages : Message[] =[
+// Helper tạo ISO + time dạng "HH:mm"
+const makeTime = (h: number, m: number) => ({
+  createdAt: new Date(2025, 10, 12, h, m).toISOString(),
+  time: `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`,
+});
+
+/** 
+ * CHÚ THÍCH:
+ * - groupId: "grp_vh_kho" | "grp_vh_taixe"
+ * - senderId + sender: thống nhất giữa userId và tên hiển thị
+ * - AttachmentType chỉ có "image" | "pdf" | "excel"
+ */
+
+export const nhanHangMessages: Message[] = [
   {
-    "id": "sys-1",
-    "type": "system",
-    "sender": "system",
-    "content": "23/10/2025",
-    "time": "2025-10-23T14:08:00Z",
-    "isMine": false,
-    "isPinned": false,
-    "isSystem": true
+    id: "sys_nh_0001",
+    groupId: "grp_vh_kho",
+    senderId: "system",
+    sender: "System",
+    type: "system",
+    content: "Wednesday, Nov 12",
+    ...makeTime(8, 0),
   },
   {
-    "id": "m1",
-    "type": "text",
-    "sender": "Quốc Nam Sup",
-    "content": "dạ em gửi phiếu rút hàng chiều nay ạ @KHO HÀNG QUỐC NAM",
-    "time": "2025-10-23T14:09:00Z",
-    "isMine": true,
-    "isPinned": false,
-    "isSystem": false
+    id: "nh_1001",
+    groupId: "grp_vh_kho",
+    senderId: "u_thu_an",
+    sender: "Thu An",
+    type: "text",
+    content: "Hàng đợt 2 đã về kho lúc 9h30, em bắt đầu kiểm đếm.",
+    ...makeTime(9, 35),
   },
   {
-    "id": "m2",
-    "type": "text",
-    "sender": "KHO HÀNG QUỐC NAM",
-    "content": "In toa dùm cậu cậu qua lấy\r\nBên đây cúp điện rồi",
-    "time": "2025-10-23T14:11:00Z",
-    "isMine": false,
-    "isPinned": false,
-    "isSystem": false
+    id: "nh_1002",
+    groupId: "grp_vh_kho",
+    senderId: "u_thanh_truc",
+    sender: "Thanh Trúc",
+    type: "text",
+    content: "Nhớ lập biên bản nhận hàng nhé.",
+    ...makeTime(9, 40),
+    replyTo: {
+      id: "nh_1001",
+      type: "text",
+      sender: "Thu An",
+      content: "Hàng đợt 2 đã về kho lúc 9h30, em bắt đầu kiểm đếm.",
+    },
   },
   {
-    "id": "m3",
-    "type": "text",
-    "sender": "Quốc Nam Sup",
-    "content": "dạ cậu",
-    "time": "2025-10-23T14:12:00Z",
-    "isMine": true,
-    "isPinned": false,
-    "isSystem": false
-  },  
-  {
-    "id": "m4",
-    "type": "text",
-    "sender": "Quốc Nam Sup",
-    "content": "@KHO HÀNG QUỐC NAM dạ cậu chiều nay con có gửi tầm 6kg Nem Nướng Miếng về vựa chiên lại ạ",
-    "time": "2025-10-23T17:53:10Z",
-    "isMine": true,
-    "isPinned": false,
-    "isSystem": false
+    id: "nh_1003",
+    groupId: "grp_vh_kho",
+    senderId: "u_thu_an",
+    sender: "Thu An",
+    type: "image",
+    content: "Phiếu nhập kho đợt 2",
+    files: [{ name: "img1.jpg", url: img1, type: "image" }],
+    ...makeTime(9, 45),
   },
   {
-    "id": "m5",
-    "type": "file",
-    "sender": "Quốc Nam Sup",
-    "content": "",
-    "time": "2025-10-23T18:33:00Z",
-    "isMine": true,
-    "isPinned": false,
-    "isSystem": false,
-    "fileInfo": {
-      "name": "Phiếu giao hàng - sáng - 24.10.2025.pdf",
-      "url": "/mock/files/Phiếu giao hàng - sáng - 24.10.2025.pdf",
-      "type": "pdf",
-      "size": "42.25 KB"
-    }
+    id: "nh_1004",
+    groupId: "grp_vh_kho",
+    senderId: "u_diem_chi",
+    sender: "Diễm Chi",
+    type: "image",
+    content: "Sắp xếp hàng trên kệ",
+    files: [
+      { name: "img2.jpg", url: img2, type: "image" },
+      { name: "img3.jpg", url: img3, type: "image" },
+      { name: "img4.jpg", url: img4, type: "image" },
+    ],
+    ...makeTime(9, 55),
   },
   {
-    "id": "m6",
-    "type": "text",
-    "sender": "Quốc Nam Sup",
-    "content": "@KHO HÀNG QUỐC NAM dạ cậu cho con gửi về vựa chiên lại 5.48kg nem nướng và 1.48kg lụa chiên với ạ, dạ con cảm ơn cậu",
-    "time": "2025-10-23T19:08:00Z",
-    "isMine": true,
-    "isPinned": false,
-    "isSystem": false
+    id: "nh_1005",
+    groupId: "grp_vh_kho",
+    senderId: "u_thanh_truc",
+    sender: "Thanh Trúc",
+    type: "file",
+    content: "Biên bản nhập kho đợt 2",
+    fileInfo: { name: "bien_ban_nhap.pdf", url: "/files/bien_ban_nhap.pdf", type: "pdf" },
+    ...makeTime(10, 5),
+  },
+];
+
+export const doiTraMessages: Message[] = [
+  {
+    id: "sys_dt_0001",
+    groupId: "grp_vh_kho",
+    senderId: "system",
+    sender: "System",
+    type: "system",
+    content: "Wednesday, Nov 12",
+    ...makeTime(8, 45),
   },
   {
-    "id": "m7",
-    "type": "image",
-    "sender": "Quốc Nam Sup",
-    "content": "",
-    "time": "2025-10-23T19:08:30Z",
-    "isMine": true,
-    "isPinned": false,
-    "isSystem": false,
-    "files": [
-      {
-        "name": "img1.jpg",
-        "url": img1,
-        "type": "image"
-      },
-      {
-        "name": "img2.jpg",
-        "url": img2,
-        "type": "image"
-      }
-    ]
+    id: "dt_2001",
+    groupId: "grp_vh_kho",
+    senderId: "u_le_binh",
+    sender: "Lệ Bình",
+    type: "text",
+    content: "Em tổng hợp danh sách đổi trả tuần này.",
+    ...makeTime(8, 50),
   },
   {
-    "id": "sys-3",
-    "type": "system",
-    "sender": "system",
-    "content": "24/10/2025",
-    "time": "2025-10-24T09:27:00Z",
-    "isMine": false,
-    "isPinned": false,
-    "isSystem": true
+    id: "dt_2002",
+    groupId: "grp_vh_kho",
+    senderId: "u_le_binh",
+    sender: "Lệ Bình",
+    type: "file",
+    content: "Danh sách đổi trả tuần 45",
+    fileInfo: { name: "doi_tra_tuan45.xlsx", url: "/files/doi_tra_tuan45.xlsx", type: "excel" },
+    ...makeTime(8, 51),
   },
   {
-    "id": "m8",
-    "type": "text",
-    "sender": "Quốc Nam Sup",
-    "content": "@KHO HÀNG QUỐC NAM dạ cậu ơi xe gà tới rồi ạ, dạ cậu xuống hàng giúp con với ạ",
-    "time": "2025-10-24T09:27:00Z",
-    "isMine": true,
-    "isPinned": false,
-    "isSystem": false
+    id: "dt_2003",
+    groupId: "grp_vh_kho",
+    senderId: "u_thanh_truc",
+    sender: "Thanh Trúc",
+    type: "text",
+    content: "Đã xem, gửi NCC trước 10h nhé.",
+    ...makeTime(8, 55),
+    replyTo: {
+      id: "dt_2002",
+      type: "file",
+      sender: "Lệ Bình",
+      content: "Danh sách đổi trả tuần 45",
+      fileInfo: { name: "doi_tra_tuan45.xlsx", url: "/files/doi_tra_tuan45.xlsx", type: "excel" },
+    },
   },
   {
-    "id": "m9",
-    "type": "image",
-    "sender": "Quốc Nam Sup",
-    "content": "",
-    "time": "2025-10-24T09:27:00Z",
-    "isMine": true,
-    "isPinned": false,
-    "isSystem": false,
-    "files": [
-      {
-        "name": "img3.jpg",
-        "url": img3,
-        "type": "image"
-      }
-    ]
-  },  
+    id: "dt_2004",
+    groupId: "grp_vh_kho",
+    senderId: "u_diem_chi",
+    sender: "Diễm Chi",
+    type: "image",
+    content: "Hàng lỗi cần đổi trả",
+    files: [
+      { name: "img1.jpg", url: img1, type: "image" },
+      { name: "img3.jpg", url: img3, type: "image" },
+      { name: "img4.jpg", url: img4, type: "image" },
+    ],
+    ...makeTime(9, 5),
+  },
+];
+
+export const lichBocHangMessages: Message[] = [
   {
-    "id": "m10",
-    "type": "text",
-    "sender": "Mac Hải",
-    "content": "Ngày 24 tháng 10\r\nNhập xe 94C00880\r\nĐùi tỏi : 714 t =10710\r\nĐùi bẹ : 226t =3390\r\nCánh gà:157t =2355\r\nGa dai: 58t =794,9",
-    "time": "2025-10-24T13:45:00Z",
-    "isMine": false,
-    "isPinned": false,
-    "isSystem": false
+    id: "sys_lb_0001",
+    groupId: "grp_vh_taixe",
+    senderId: "system",
+    sender: "System",
+    type: "system",
+    content: "Wednesday, Nov 12",
+    ...makeTime(14, 0),
   },
   {
-    "id": "m11",
-    "type": "image",
-    "sender": "Mac Hải",
-    "content": "",
-    "time": "2025-10-24T14:27:00Z",
-    "isMine": false,
-    "isPinned": false,
-    "isSystem": false,
-    "files": [
-      {
-        "name": "img4.jpg",
-        "url": img4,
-        "type": "image"
-      }
-    ]
+    id: "lb_3001",
+    groupId: "grp_vh_taixe",
+    senderId: "u_huyen",
+    sender: "Huyền",
+    type: "text",
+    content: "Lịch bốc hàng mai: Long An – Bình Dương (3 xe).",
+    ...makeTime(14, 15),
   },
   {
-    "id": "m12",
-    "type": "file",
-    "sender": "Quốc Nam Sup",
-    "content": "",
-    "time": "2025-10-24T18:33:00Z",
-    "isMine": true,
-    "isPinned": false,
-    "isSystem": false,
-    "fileInfo": {
-      "name": "Phiếu giao hàng - chiều - 24.10.2025.pdf",
-      "url": "/mock/files/Phiếu giao hàng - chiều - 24.10.2025.pdf",
-      "type": "pdf",
-      "size": "41.80 KB"
-    }
+    id: "lb_3002",
+    groupId: "grp_vh_taixe",
+    senderId: "u_ngoc_vang",
+    sender: "Ngọc Vàng",
+    type: "image",
+    content: "Bảng điều xe ngày mai",
+    files: [{ name: "img3.jpg", url: img3, type: "image" }],
+    ...makeTime(14, 18),
   },
   {
-    "id": "m13",
-    "type": "text",
-    "sender": "Quốc Nam Sup",
-    "content": "@KHO HÀNG QUỐC NAM dạ cậu ngày mai có xe đồ thịt nhóm trâu heo về kho cảng, cậu cập nhật thông tin giúp con với nha",
-    "time": "2025-10-24T9:27:00Z",
-    "isMine": true,
-    "isPinned": false,
-    "isSystem": false
+    id: "lb_3003",
+    groupId: "grp_vh_taixe",
+    senderId: "u_thanh_truc",
+    sender: "Thanh Trúc",
+    type: "text",
+    content: "Xe số 2 giao trước 7h sáng.",
+    ...makeTime(14, 25),
+    replyTo: {
+      id: "lb_3001",
+      type: "text",
+      sender: "Huyền",
+      content: "Lịch bốc hàng mai: Long An – Bình Dương (3 xe).",
+    },
+  },
+];
+
+export const donBocHangMessages: Message[] = [
+  {
+    id: "sys_db_0001",
+    groupId: "grp_vh_taixe",
+    senderId: "system",
+    sender: "System",
+    type: "system",
+    content: "Wednesday, Nov 12",
+    ...makeTime(9, 55),
   },
   {
-    "id": "sys-5",
-    "type": "system",
-    "sender": "system",
-    "content": "31/10/2025",
-    "time": "2025-10-31T07:46:00Z",
-    "isMine": false,
-    "isPinned": false,
-    "isSystem": true
+    id: "db_4001",
+    groupId: "grp_vh_taixe",
+    senderId: "u_huyen",
+    sender: "Huyền",
+    type: "text",
+    content: "Đơn bốc #DH20251112-1: Xuất 150 thùng mì về Bình Dương.",
+    ...makeTime(10, 0),
   },
   {
-    "id": "m14",
-    "type": "text",
-    "sender": "Quốc Nam Sup",
-    "content": "dạ ngày mai xe đồ ghép về có sản phẩm mới Mực Khoanh ( 1 tấn ), anh chuẩn bị trước vị trí để sản phẩm mới giúp em với nha, em cảm ơn ạ @KHO HÀNG QUỐC NAM",
-    "time": "2025-10-31T07:46:00Z",
-    "isMine": true,
-    "isPinned": false,
-    "isSystem": false
-  },  
-  {
-    "id": "m15",
-    "type": "text",
-    "sender": "Quốc Nam Sup",
-    "content": "@KHO HÀNG QUỐC NAM dạ toa vựa đóng xong rồi anh qua lấy về giúp em với nha, em cảm ơn ạ",
-    "time": "2025-10-31T11:34:00Z",
-    "isMine": true,
-    "isPinned": false,
-    "isSystem": false
+    id: "db_4002",
+    groupId: "grp_vh_taixe",
+    senderId: "u_ngoc_vang",
+    sender: "Ngọc Vàng",
+    type: "file",
+    content: "Đơn bốc hàng DH20251112-1",
+    fileInfo: { name: "DH20251112-1.pdf", url: "/files/DH20251112-1.pdf", type: "pdf" },
+    ...makeTime(10, 2),
   },
   {
-    "id": "m16",
-    "type": "text",
-    "sender": "Quốc Nam Sup",
-    "content": "@KHO HÀNG QUỐC NAM dạ xe có về thêm 1 tấn Râu Mực và 1 tấn Đầu Cá Hồi nữa, anh cập nhật thông tin giúp em với nha",
-    "time": "2025-10-31T11:35:00Z",
-    "isMine": true,
-    "isPinned": false,
-    "isSystem": false,
-    "replyTo": {
-      "id": "m14",
-      "sender": "Quốc Nam Sup",
-      "type": "text",
-      "content": "dạ ngày mai xe đồ ghép về có sản phẩm mới Mực Khoanh ( 1 tấn ), anh chuẩn bị trước vị trí để sản phẩm mới giúp em với nha, em cảm ơn ạ @KHO HÀNG QUỐC NAM"
-    }
-  }
-] as const;
+    id: "db_4003",
+    groupId: "grp_vh_taixe",
+    senderId: "u_thanh_truc",
+    sender: "Thanh Trúc",
+    type: "text",
+    content: "Đơn này giao cho tài xế Hậu phụ trách.",
+    ...makeTime(10, 5),
+    replyTo: {
+      id: "db_4001",
+      type: "text",
+      sender: "Huyền",
+      content: "Đơn bốc #DH20251112-1: Xuất 150 thùng mì về Bình Dương.",
+    },
+  },
+  {
+    id: "db_4004",
+    groupId: "grp_vh_taixe",
+    senderId: "u_huyen",
+    sender: "Huyền",
+    type: "image",
+    content: "Ảnh đóng hàng DH20251112-1",
+    files: [
+      { name: "img1.jpg", url: img1, type: "image" },
+      { name: "img2.jpg", url: img2, type: "image" },
+      { name: "img4.jpg", url: img4, type: "image" },
+    ],
+    ...makeTime(10, 20),
+  },
+];
+
+export const mockMessagesByWorkType = {
+  nhanHang: nhanHangMessages,
+  doiTra: doiTraMessages,
+  lichBocHang: lichBocHangMessages,
+  donBocHang: donBocHangMessages,
+};

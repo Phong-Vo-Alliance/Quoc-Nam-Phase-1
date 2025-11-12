@@ -9,6 +9,19 @@ export default {
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
   		},
+			boxShadow: {
+				'surface-sm':
+					'0 1px 2px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.03)',
+				'surface-md':
+					'0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+				'surface-lg':
+					'0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.05)',
+				'brand-sm':
+					'0 1px 3px rgba(56,174,60,0.15)', // brand glow nhẹ
+				'brand-md':
+					'0 2px 8px rgba(56,174,60,0.18), 0 1px 2px rgba(0,0,0,0.04)',
+			},
+
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
