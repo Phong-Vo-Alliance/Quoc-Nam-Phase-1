@@ -48,6 +48,8 @@ export interface Task {
   id: ID;
   groupId: ID;
   workTypeId: ID;
+  workTypeName?: string;
+  progressText?: string;
 
   sourceMessageId: ID;       // message gốc dùng để tạo task
   title: string;
@@ -246,4 +248,18 @@ export type Permission =
 export interface RolePermissions {
   role: UserRole;
   permissions: Permission[];
+}
+
+// ===== Tiếp nhận thông tin =====
+export interface ReceivedInfo {
+  id: string;
+  messageId: string;
+  groupId: string;
+  title: string;
+  sender: string;
+  createdAt: string;
+  status: "waiting" | "assigned" | "transferred";
+  transferredTo?: string;  // departmentId
+  transferredToGroupName?: string;
+  transferredWorkTypeName?: string;
 }

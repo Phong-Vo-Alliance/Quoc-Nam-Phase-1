@@ -10,6 +10,7 @@ import type {
   PinnedMessage,
   GroupChat,
   Message,
+  ReceivedInfo,
 } from "../types";
 // function scrollToMessage(id: number | string) {
 //   const el = document.getElementById(`msg-${id}`);
@@ -117,6 +118,13 @@ interface WorkspaceViewProps {
   currentUserId: string;
   currentUserName: string;
   selectedChat: ChatTarget | null;
+
+  onReceiveInfo?: (message: Message) => void;
+  receivedInfos?: ReceivedInfo[];
+  onTransferInfo?: (infoId: string, departmentId: string) => void;
+  onAssignInfo?: (info: ReceivedInfo) => void;
+  onAssignFromMessage?: (msg: Message) => void;
+  openTransferSheet?: (info: ReceivedInfo) => void;
 }
 
 export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
@@ -157,6 +165,12 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
     pinnedMessages,
     onClosePinned,
     onOpenPinnedMessage,
+    onReceiveInfo,
+    receivedInfos,
+    onTransferInfo,
+    onAssignInfo,
+    onAssignFromMessage,
+    openTransferSheet,
   } = props;
 
   
@@ -178,7 +192,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
     >
 
       {/* CỘT TRÁI */}
-      <div className="h-full overflow-hidden border-r border-gray-200">
+      <div className="h-full min-h-0 rounded-2xl border border-gray-300 overflow-y-auto">
         {/* LeftSidebar mới: chỉ hiển thị nhóm / liên hệ */}
         {workspaceMode === "pinned" ? (
           <PinnedMessagesPanel
@@ -238,14 +252,18 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
           currentUserId={currentUserId}
           currentUserName={currentUserName}
           selectedChat={selectedChat}
+
+          onReceiveInfo={onReceiveInfo}
+          onAssignFromMessage={onAssignFromMessage}
+          setTab={setTab}
+          receivedInfos={receivedInfos}
+          viewMode={viewMode}
         />
       </div>
 
-
-
       {/* RightPanel giữ nguyên */}
       {showRight && (
-        <div className="h-full overflow-hidden border-l border-gray-200">
+        <div className="h-full min-h-0 overflow-hidden flex flex-col">
           <RightPanel
             tab={tab}
             setTab={setTab}
@@ -268,6 +286,11 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
             onChangeTaskStatus={onChangeTaskStatus}
             //  onReassignTask={handleReassignTask}
             onToggleChecklist={onToggleChecklist}
+
+            receivedInfos={receivedInfos}
+            onTransferInfo={onTransferInfo}
+            onAssignInfo={onAssignInfo}
+            onOpenGroupTransfer={openTransferSheet}
 
           />
 

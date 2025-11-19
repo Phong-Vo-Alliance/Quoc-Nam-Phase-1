@@ -3,9 +3,20 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Search, PanelRightClose, PanelRightOpen, MessageSquareText, Paperclip, Image as ImageIcon, AlarmClock, Type, SendHorizonal } from 'lucide-react';
 import { IconButton } from '@/components/ui/icon-button';
 import { Avatar, Badge } from '../components';
-import type { Message, Task, PinnedMessage, FileAttachment, GroupChat } from '../types';
+import type { Message, Task, PinnedMessage, FileAttachment, GroupChat, ReceivedInfo, } from '../types';
 import { MessageBubble } from "@/features/portal/components/MessageBubble";
 import { convertToPinnedMessage } from "@/features/portal/utils/convertToPinnedMessage";
+import { LinearTabs } from '../components/LinearTabs';
+
+type ViewMode = "lead" | "staff";
+
+export const formatTime = (iso: string) => {
+  const d = new Date(iso);
+  return d.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
 
 const btn = (active = false) =>
   `rounded-lg border px-3 py-1 transition ${active ? 'bg-brand-600 text-white border-sky-600 shadow-sm' : 'bg-white text-brand-700 border-brand-200 hover:bg-brand-50'}`;
@@ -50,6 +61,11 @@ export const ChatMain: React.FC<{
   selectedWorkTypeId?: string;
   onChangeWorkType?: (id:string)=>void;
   scrollToMessageId?: string;
+  onReceiveInfo?: (message: Message) => void;
+  receivedInfos?: ReceivedInfo[];
+  onAssignFromMessage?: (msg: Message) => void;
+  setTab: (v: "info" | "order" | "tasks") => void;
+  viewMode?: ViewMode; // 'lead' | 'staff'
 }> = ({
   selectedGroup,
   currentUserId,
@@ -64,6 +80,11 @@ export const ChatMain: React.FC<{
   selectedWorkTypeId,
   onChangeWorkType,
   scrollToMessageId,
+  onReceiveInfo,
+  receivedInfos,
+  onAssignFromMessage,
+  setTab,
+  viewMode = "staff",
 }) => {
   // const [showCloseMenu, setShowCloseMenu] = React.useState(false);
   // const [inputValue, setInputValue] = React.useState("");
@@ -122,6 +143,55 @@ export const ChatMain: React.FC<{
     setInputValue("");
   }, [inputValue, currentUserName, currentUserId, selectedWorkTypeId, currentWorkTypeId, setMessages]);
 
+  const handleReceiveFromBubble = useCallback((msg: Message) => {
+    onReceiveInfo?.(msg);  // gọi PortalWireframes.handleReceiveInfo
+    setTab("order");       // chuyển panel phải sang tab Công việc
+  }, [onReceiveInfo, setTab]);
+
+  const handleReceiveInfo = useCallback((msg: Message) => {
+    const timeIso = new Date().toISOString();
+
+    // 1) Mark message as received
+    const received = {
+      messageId: msg.id,
+      time: timeIso,
+      receivedBy: currentUserName,
+    };
+
+    // 2) Append system message
+    const excerpt = msg.content ?? "".length > 40
+      ? msg.content ?? "".slice(0, 40) + "…"
+      : msg.content;
+
+    const systemMsg: Message = {
+      id: "sys-" + Date.now(),
+      type: "system",
+      content: `${excerpt} được tiếp nhận bởi ${currentUserName} lúc ${new Date(timeIso).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })}`,
+      time: timeIso,
+      createdAt: timeIso,
+      groupId: msg.groupId,
+      sender: "system",
+      senderId: "system",
+      isMine: false,
+      isPinned: false,
+      isSystem: true,
+    };
+
+    // 3) Add new system message + update receivedInfos externally
+    setMessages(prev => [...prev, systemMsg]);
+
+    // 4) Đánh dấu message này là received → RightPanel sẽ nhận được qua props
+    onReceiveInfo?.(msg);
+
+    // 5) Auto switch RightPanel tab
+    setShowRight(true);  // mở panel phải nếu đang đóng
+    setTab("order");     // tab Công việc
+  }, [currentUserName, onReceiveInfo, setMessages]);
+
+
   // Auto-scroll khi có tin mới
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -148,7 +218,7 @@ export const ChatMain: React.FC<{
   return (
     <main className="flex flex-col w-full rounded-2xl border border-gray-300 bg-white shadow-sm h-full min-h-0">
       {/* Header */}
-      <div className="flex items-center justify-between border-b p-4 shrink-0">
+      <div className="flex items-center justify-between border-b pt-4 pr-4 pl-4 shrink-0">
         <div className="flex items-center gap-3">
           <Avatar name="Group" />
           <div>
@@ -158,18 +228,20 @@ export const ChatMain: React.FC<{
             </div>
             {/* WorkType segmented control (nếu có) */}
             {selectedGroup?.workTypes && selectedGroup.workTypes.length > 0 && (
-              <div className="mt-2 flex items-center gap-2">
-                {selectedGroup?.workTypes?.map(w => (
-                  <SegBtn
-                    key={w.id}
-                    active={(selectedWorkTypeId ?? currentWorkTypeId) === w.id}
-                    onClick={() => onChangeWorkType?.(w.id)}
-                  >
-                    {w.name}
-                  </SegBtn>
-                ))}
+              <div className="mt-2">
+                <LinearTabs
+                  tabs={selectedGroup.workTypes.map(w => ({
+                    key: w.id,
+                    label: w.name,
+                  }))}
+                  active={selectedWorkTypeId ?? currentWorkTypeId ?? selectedGroup.workTypes[0]?.id}
+                  onChange={(id) => onChangeWorkType?.(id)}
+                  textClass="text-xs"
+                  noWrap={true}
+                />
               </div>
             )}
+
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -221,21 +293,34 @@ export const ChatMain: React.FC<{
 
       {/* Message list */}
       <div className="flex-1 overflow-y-auto space-y-1 p-4 min-h-0 bg-green-900/15">
-        {messages.map((msg, i) => (
-          <MessageBubble
-            key={msg.id}
-            data={msg}
-            prev={i > 0 ? messages[i - 1] : null}
-            next={i < messages.length - 1 ? messages[i + 1] : null}
-            onReply={(m) => {
-              const quote = m.type === "text" ? m.content : `[${m.type}]`;
-              setInputValue(prev => (prev ? prev + "\n" : "") + `> ${quote}\n`);
-            }}
-            onPin={handlePinToggle}
-            onOpenFile={handleOpenFile}
-            onOpenImage={handleOpenImage}
-          />
-        ))}
+        {messages.map((msg, i) => {
+          const infoForMsg = receivedInfos?.find(i => i.messageId === msg.id);
+          const isReceived = !!infoForMsg;
+          const receivedLabel = infoForMsg
+            ? `Đã tiếp nhận bởi ${currentUserName} lúc ${formatTime(infoForMsg.createdAt)}`
+            : undefined;
+          return (
+            <MessageBubble
+              key={msg.id}
+              data={msg}
+              prev={i > 0 ? messages[i - 1] : null}
+              next={i < messages.length - 1 ? messages[i + 1] : null}
+              onReply={(m) => {
+                const quote = m.type === "text" ? m.content : `[${m.type}]`;
+                setInputValue(prev => (prev ? prev + "\n" : "") + `> ${quote}\n`);
+              }}
+              onPin={handlePinToggle}
+              onOpenFile={handleOpenFile}
+              onOpenImage={handleOpenImage}
+              onReceiveInfo={handleReceiveFromBubble}
+              isReceived={isReceived}
+              receivedLabel={receivedLabel}
+              onAssignFromMessage={onAssignFromMessage}
+              viewMode={viewMode}
+            />
+          );
+        })
+        }
         <div ref={bottomRef} />
       </div>
 

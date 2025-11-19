@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  MessageSquareText,
   Users,
   Monitor,
   Wrench,
@@ -121,7 +122,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
         <div className="mt-6 flex flex-col items-center gap-5">
           {/* Workspace */}
           <button
-            title="Workspace – Nhân viên"
+            title="Tin nhắn"
             onClick={() => onSelect("workspace")}
             className={cn(
               "p-2 rounded-lg transition-colors",
@@ -130,7 +131,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
                 : "bg-brand-600 text-white/90 hover:text-white hover:bg-white/10"
             )}
           >
-            <Users className="h-6 w-6" />
+            <MessageSquareText className="h-6 w-6" />
           </button>
 
           {/* Team Monitor */}

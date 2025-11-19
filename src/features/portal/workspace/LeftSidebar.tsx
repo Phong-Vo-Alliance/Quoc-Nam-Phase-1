@@ -1,5 +1,6 @@
 import React from "react";
 import type { GroupChat } from '../types';
+import { SegmentedTabs } from "../components/SegmentedTabs";
 
 /* ===================== Types (props mới) ===================== */
 type ChatTarget = { type: "group" | "dm"; id: string };
@@ -39,7 +40,7 @@ const inputCls =
   "rounded-lg border px-3 py-2 text-sm border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300";
 
 const rowCls =
-  "flex items-center gap-3 rounded-lg p-2 hover:bg-brand-50 cursor-pointer transition-colors";
+  "flex items-center gap-3 p-2 hover:bg-brand-50 cursor-pointer transition-colors";
 
 const badgeUnread = (n?: number) =>
   n && n > 0 ? (
@@ -94,14 +95,17 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
       {/* Header: Tabs + Search */}
       <div className="border-b p-3">
         <div className="flex items-center justify-between">
-          <div className="font-medium">Tin nhắn</div>
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <button className={btn(tab === "groups")} onClick={() => setTab("groups")}>
-              Nhóm
-            </button>
-            <button className={btn(tab === "contacts")} onClick={() => setTab("contacts")}>
-              Cá nhân
-            </button>
+          <div className="font-medium">Tin nhắn</div>          
+          <div className="text-xs">
+            <SegmentedTabs
+              tabs={[
+                { key: "groups", label: "Nhóm" },
+                { key: "contacts", label: "Cá nhân" },
+              ]}
+              active={tab}
+              onChange={(v) => setTab(v as any)}
+              textClass="text-xs"
+            />
           </div>
         </div>
 
@@ -116,7 +120,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
       </div>
 
       {/* Content */}
-      <div className="p-2">
+      <div className="">
         {tab === "groups" ? (
           <ul className="divide-y">
             {filteredGroups.length === 0 && (
@@ -135,6 +139,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 </div>
 
                 <div className="min-w-0 flex-1">
+                  {/* Row 1: tên nhóm + thời gian */}
                   <div className="flex items-center justify-between">
                     <p className="truncate text-sm font-medium">{g.name}</p>
                     {g.lastTime && (
@@ -144,13 +149,19 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     )}
                   </div>
 
-                  <p className="truncate text-xs text-gray-500">
-                    {g.lastSender ? `${g.lastSender}: ` : ""}
-                    {g.lastMessage || ""}
-                  </p>
+                  {/* Row 2: last message + unread badge align phải */}
+                  <div className="flex items-center justify-between">
+                    <p className="truncate text-xs text-gray-500 mr-2">
+                      {g.lastSender ? `${g.lastSender}: ` : ""}
+                      {g.lastMessage || ""}
+                    </p>
+
+                    {/* Badge always pinned to the right */}
+                    {badgeUnread(g.unreadCount)}
+                  </div>
                 </div>
 
-                {badgeUnread(g.unreadCount)}
+                
               </li>
             ))}
           </ul>

@@ -1,6 +1,6 @@
 import React from "react";
 import type { Message } from "../types";
-import { Eye, Star, StarOff, Reply, Quote, ClipboardPlus, Clock } from "lucide-react";
+import { Eye, Star, StarOff, Reply, Quote, ClipboardPlus, Clock, Inbox, Paperclip } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** Optional meta (giúp xác định nhóm/bo góc như Google Chat) */
@@ -18,6 +18,11 @@ interface MessageBubbleProps {
   onPin?: (msg: Message) => void;
   onOpenFile?: (msg: Message) => void;
   onOpenImage?: (msg: Message) => void;
+  onReceiveInfo?: (msg: Message) => void;
+  isReceived?: boolean;
+  receivedLabel?: string;
+  onAssignFromMessage?: (msg: Message) => void;
+  viewMode?: "lead" | "staff";
 }
 
 /* Utils nhỏ để so sánh thời gian gần nhau */
@@ -52,6 +57,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   onPin,
   onOpenFile,
   onOpenImage,
+  onReceiveInfo,
+  isReceived,
+  receivedLabel,
+  onAssignFromMessage,
+  viewMode,
 }) => {
   // System line
   if (data.type === "system") {
@@ -393,6 +403,24 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         >
           {new Date(data.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         </div>
+
+        {isReceived && (          
+          <span className="inline-flex items-center gap-1 mt-1 text-xs text-emerald-600">
+            <Paperclip className="w-3 h-3" /> {receivedLabel ?? "Đã tiếp nhận"}
+          </span>
+        )}
+
+        {isReceived && (
+          <div
+    className={cn(
+      "absolute -bottom-0.5 right-0 w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md",
+      data.isMine ? "translate-x-2" : "-translate-x-2 -translate-y-2"
+    )}
+    title={receivedLabel ?? "Đã tiếp nhận"}
+  >
+    <Inbox className="w-3 h-3" />
+  </div>
+        )}
         
         {/* Actions group – floating card style */}
         <div
@@ -420,12 +448,26 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           >
             {data.isPinned ? <StarOff size={14} /> : <Star size={14} />}
           </button>
-          <button title="Giao Task" className="p-1 hover:bg-brand-50 rounded">
+          <button
+            title="Giao Task"
+            className="p-1 hover:bg-brand-50 rounded"
+            onClick={() => onAssignFromMessage?.(data)}
+          >
             <ClipboardPlus className="w-4 h-4 text-brand-600" />
           </button>
+          {!isReceived && viewMode==="lead" && (           
+            <button
+              onClick={() => onReceiveInfo?.(data)}
+              title="Tiếp nhận thông tin"
+              className="p-1 rounded hover:bg-brand-50"
+            >
+              <Inbox className="w-4 h-4 text-brand-600" />
+            </button>
+          )}
+          
           <button title="Đặt về Pending" className="p-1 hover:bg-amber-50 rounded">
             <Clock className="w-4 h-4 text-amber-500" />
-          </button>
+          </button>          
         </div>
       </div>
     </div>
