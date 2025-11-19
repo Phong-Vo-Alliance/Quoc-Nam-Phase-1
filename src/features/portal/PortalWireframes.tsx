@@ -1,14 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ToastContainer, CloseNoteModal, FilePreviewModal } from './components';
-import type { LeadThread, Task, TaskStatus, ToastKind, ToastMsg, FileAttachment, PinnedMessage, GroupChat, Message } from './types';
+import type { LeadThread, Task, TaskStatus, ToastKind, ToastMsg, FileAttachment, PinnedMessage, GroupChat, Message, ReceivedInfo, WorkType } from './types';
 import { WorkspaceView } from './workspace/WorkspaceView';
 import { TeamMonitorView } from './lead/TeamMonitorView';
 import { MainSidebar } from "./components/MainSidebar";
 import { ViewModeSwitcher } from "@/features/portal/components/ViewModeSwitcher";
 import { mockGroups as sidebarGroups, mockContacts } from "@/data/mockSidebar";
-import { mockGroup_VH_Kho, mockGroup_VH_TaiXe } from "@/data/mockOrg";
+import { mockGroup_VH_Kho, mockGroup_VH_TaiXe, mockDepartments } from "@/data/mockOrg";
 import { mockTasks } from "@/data/mockTasks";
 import { mockMessagesByWorkType } from "@/data/mockMessages";
+import { DepartmentTransferSheet } from '@/components/sheet/DepartmentTransferSheet';
+import { AssignTaskSheet } from '@/components/sheet/AssignTaskSheet';
+import { GroupTransferSheet } from "@/components/sheet/GroupTransferSheet";
 
 
 export default function PortalWireframes() {
@@ -25,6 +28,21 @@ export default function PortalWireframes() {
   const [q, setQ] = useState('');
   // const [showPinned, setShowPinned] = useState(false);
   const [viewMode, setViewMode] = React.useState<"lead" | "staff">("lead");
+
+  const [receivedInfos, setReceivedInfos] = useState<ReceivedInfo[]>([]);
+
+  const [transferSheet, setTransferSheet] = useState({
+    open: false,
+    info: undefined as ReceivedInfo | undefined
+  });
+
+  const [groupTransferSheet, setGroupTransferSheet] = useState<{
+    open: boolean;
+    info?: ReceivedInfo;
+  }>({
+    open: false,
+  });
+ 
 
   // sẽ tính workTypes theo selectedGroup bên dưới
   // const workTypesFull = mockGroup_VH_Kho.workTypes ?? [];
@@ -137,9 +155,11 @@ export default function PortalWireframes() {
     type: "group",
     id: "grp_vh_kho", // mặc định mở nhóm “Vận hành - Kho Hàng”
   });
+
   const [tasks, setTasks] = React.useState(() => structuredClone(mockTasks));
 
   const currentUser = 'Lê Chi';
+  const currentUserId = 'u-chi';
   const members = ['Nguyễn An', 'Trần Bình', 'Lê Chi'];
   //const now = new Date().toISOString();
   const nowIso = () => new Date().toISOString();
@@ -272,6 +292,23 @@ export default function PortalWireframes() {
     setLeadThreads((rows) => rows.map((r) => (r.id === id ? { ...r, owner, at: 'vừa xong' } : r)));
   const setThreadStatus = (id: string, label: LeadThread['st']) =>
     setLeadThreads((rows) => rows.map((r) => (r.id === id ? { ...r, st: label, at: 'vừa xong' } : r)));
+
+  function enrichTasks(tasks: Task[], workTypes: WorkType[]) {
+    return tasks.map(t => {
+      const wt = workTypes.find(w => w.id === t.workTypeId);
+      return {
+        ...t,
+        workTypeName: wt?.name ?? t.workTypeId,  // fallback ID
+        progressText: t.checklist?.length
+          ? `${t.checklist.filter(c => c.done).length}/${t.checklist.length} mục`
+          : "Không có checklist"
+      };
+    });
+  }
+
+  React.useEffect(() => {
+    setTasks(prev => enrichTasks(prev, selectedGroup?.workTypes ?? []));
+  }, [selectedGroup]);
 
   const groupMembers: { id: string; name: string; role?: "Leader" | "Member" | undefined; }[] = [
     { id: "u_thanh_truc", name: "Thanh Trúc", role: "Leader" },
@@ -501,6 +538,168 @@ export default function PortalWireframes() {
     // setMessages(messagesByTarget[target.type][target.id] ?? []);
   }; 
 
+  // Hàm xử lý khi Leader nhấn “Tiếp nhận thông tin”
+  const handleReceiveInfo = (message: Message) => {
+    const nowIso = new Date().toISOString();
+
+    // ĐÃ TIẾP NHẬN RỒI THÌ THÔI
+    const existed = receivedInfos.some(info => info.messageId === message.id);
+    if (existed) {
+      pushToast("Tin nhắn này đã được tiếp nhận trước đó.", "info");
+      return;
+    }
+
+    // 1) Create ReceivedInfo item
+    const info: ReceivedInfo = {
+      id: "info_" + message.id,
+      messageId: message.id,
+      groupId: message.groupId,
+      title: (message.content ?? "").slice(0, 60),
+      sender: message.sender,
+      createdAt: nowIso,
+      status: "waiting",
+    };
+
+    setReceivedInfos(prev => [...prev, info]);
+
+    // 2) Add system message
+    const excerpt =
+      (message.content ?? "").length > 40
+        ? (message.content ?? "").slice(0, 40) + "…"
+        : (message.content ?? "");
+
+    const systemMsg: Message = {
+      id: "sys_" + Date.now(),
+      type: "system",
+      content: `${excerpt} được tiếp nhận bởi ${currentUser} lúc ${new Date(nowIso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+        }`,
+      sender: "system",
+      senderId: "system",
+      groupId: message.groupId,
+      time: nowIso,
+      createdAt: nowIso,
+      isMine: false,
+      isPinned: false,
+      isSystem: true,
+    };
+
+    setMessages(prev => [...prev, systemMsg]);
+
+    // 3) Auto open RightPanel + switch tab
+    setShowRight(true);
+    setTab("order"); // tab Công việc
+
+    pushToast("Đã tiếp nhận thông tin.", "success");
+  };
+
+  // Handler onAssignInfo, mở cùng Action Sheet assign task đang dùng
+  const [assignSheet, setAssignSheet] = useState<{
+    open: boolean;
+    source?: "message" | "receivedInfo";
+    message?: Message;
+    info?: ReceivedInfo;
+  }>({
+    open: false,
+  });
+
+  const onAssignInfo = (info: ReceivedInfo) => {
+    setAssignSheet({
+      open: true,
+      source: "receivedInfo",
+      info,
+      message: undefined, // vì assign từ info, không phải từ message
+    });
+  };
+
+  const onAssignFromMessage = (msg: Message) => {
+    setAssignSheet({
+      open: true,
+      source: "message",
+      message: msg,
+      info: undefined,
+    });
+  };
+
+  const openTransferSheet = (info: ReceivedInfo) => {
+    setGroupTransferSheet({ open: true, info });
+  };
+
+  const handleTransferInfo = (infoId: string, departmentId: string) => {
+    setReceivedInfos(prev =>
+      prev.map(i =>
+        i.id === infoId ? { ...i, status: "transferred", transferredTo: departmentId } : i
+      )
+    );
+
+    pushToast("Đã chuyển thông tin sang phòng ban.", 'success');
+  };
+
+  const handleCreateTask = ({
+    title,
+    sourceMessageId,
+    assigneeId,
+  }: {
+    title: string;
+    sourceMessageId?: string;
+    assigneeId?: string;
+  }): void => {
+    const newTask: Task = {
+      id: "task_" + Date.now(),
+      title,
+      description: title,
+      groupId: selectedGroup?.id ?? "",
+      sourceMessageId: sourceMessageId ?? "",
+      assigneeId: assigneeId ?? currentUserId, // nếu không có thì giao cho currentUser
+      assignedById: currentUser, // use currentUser (string) which exists in this scope
+      workTypeId: selectedWorkTypeId,
+      status: "in_progress",
+      checklist: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setTasks((prev) => [...prev, newTask]);
+
+    // Nếu assign từ ReceivedInfo → đổi trạng thái
+    if (assignSheet.source === "receivedInfo" && assignSheet.info) {
+      setReceivedInfos((prev) =>
+        prev.map((i) =>
+          i.id === assignSheet.info!.id
+            ? { ...i, status: "assigned" }
+            : i
+        )
+      );
+    }
+    
+    pushToast("Đã giao công việc.", 'success');
+  };
+
+  const handleGroupTransferConfirm = ({
+    infoId,
+    toGroupId,
+    workTypeId,
+    assigneeId,
+    toGroupName,
+    toWorkTypeName,
+  }: {
+    infoId: string;
+    toGroupId: string;
+    workTypeId: string;
+    assigneeId: string;
+    toGroupName: string;
+    toWorkTypeName: string;
+  }) => {
+    setReceivedInfos((prev) =>
+      prev.map((inf) =>
+        inf.id === infoId
+          ? { ...inf, status: "transferred", transferredTo: toGroupId, transferredToGroupName: toGroupName, transferredWorkTypeName: toWorkTypeName }
+          : inf
+      )
+    );
+
+    pushToast("Đã chuyển thông tin sang nhóm mới.", "success");
+  };
+
   return (
     <div className="w-screen h-screen flex overflow-hidden bg-gray-50 text-gray-800">
       {/* MainSidebar */}
@@ -592,15 +791,23 @@ export default function PortalWireframes() {
             workTypes={(selectedGroup?.workTypes ?? []).map(w => ({ id: w.id, name: w.name }))}
             selectedWorkTypeId={selectedWorkTypeId}
             onChangeWorkType={setSelectedWorkTypeId}
-            currentUserId={"u_thu_an"}
-            currentUserName={"Thu An"}
+            currentUserId={currentUserId}
+            currentUserName={currentUser}
 
             // Tasks & callbacks để RightPanel dùng thật
             tasks={tasks}
             onChangeTaskStatus={handleChangeTaskStatus}
             onToggleChecklist={handleToggleChecklist}
             groupMembers={groupMembers}
-          />
+
+            // Tiếp nhận thông tin
+            onReceiveInfo={handleReceiveInfo}
+            onTransferInfo={handleTransferInfo}
+            receivedInfos={receivedInfos}
+            onAssignInfo={onAssignInfo}
+            onAssignFromMessage={onAssignFromMessage}
+            openTransferSheet={openTransferSheet}
+          />          
         ) : (
           <TeamMonitorView
             leadThreads={leadThreads}
@@ -622,6 +829,27 @@ export default function PortalWireframes() {
           onOpenChange={setShowCloseModal}
         />
         <FilePreviewModal open={showPreview} file={previewFile} onOpenChange={setShowPreview} />
+
+        <AssignTaskSheet
+          open={assignSheet.open}
+          source={assignSheet.source}
+          message={assignSheet.message}
+          info={assignSheet.info}
+          members={groupMembers}
+          onClose={() => setAssignSheet({ open: false })}
+          onCreateTask={handleCreateTask}
+        />
+
+        <GroupTransferSheet
+          open={groupTransferSheet.open}
+          info={groupTransferSheet.info}
+          groups={groups}
+          currentUserId={currentUserId}
+          currentUserName={currentUser}
+          members={groupMembers}
+          onClose={() => setGroupTransferSheet({ open: false })}
+          onConfirm={handleGroupTransferConfirm}
+        />
 
         {/* Toasts */}
         <ToastContainer toasts={toasts} onClose={removeToast} />

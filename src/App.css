@@ -44,3 +44,67 @@
 .read-the-docs {
   color: #888;
 }
+
+
+/* Card 3D cho RightAccordion */
+.premium-accordion-wrapper {
+  position: relative;
+  margin-top: 0.5rem;    /* my-2 */
+  margin-bottom: 0.5rem;
+  padding: 0.25rem;      /* p-1 */
+  border-radius: 1.5rem; /* rounded-3xl */
+
+  /* gradient nhẹ brand + trắng */
+  background: linear-gradient(
+    135deg,
+    rgba(209, 250, 229, 0.95),  /* emerald-50 */
+    rgba(255, 255, 255, 0.9),
+    rgba(209, 250, 229, 0.7)
+  );
+
+  /* blur nhẹ kiểu glass */
+  backdrop-filter: blur(6px);
+
+  /* viền brand rất nhạt */
+  border: 1px solid rgba(16, 185, 129, 0.35);
+
+  /* shadow 3D mềm */
+  box-shadow:
+    0 8px 20px rgba(15, 23, 42, 0.12),
+    0 2px 4px rgba(15, 23, 42, 0.06);
+
+  transition: all 0.35s ease-out;
+}
+
+.premium-accordion-wrapper:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 14px 32px rgba(15, 23, 42, 0.18),
+    0 4px 10px rgba(15, 23, 42, 0.12);
+}
+
+/* Thanh sáng trên đỉnh card */
+.premium-light-bar {
+  pointer-events: none;
+  position: absolute;
+  top: 4px;       /* gần viền trên card */
+  left: 1.5rem;   /* tương đương left-6 */
+  right: 1.5rem;
+  height: 2px;
+  border-radius: 9999px;
+
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.85),
+    transparent
+  );
+
+  opacity: 0;
+  transition: opacity 0.5s ease-out;
+}
+
+.premium-accordion-wrapper:hover .premium-light-bar {
+  opacity: 1;
+}
+
