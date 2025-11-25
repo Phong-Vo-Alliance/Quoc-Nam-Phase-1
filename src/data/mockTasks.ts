@@ -27,69 +27,69 @@ export const mockTasks: Task[] = [
       { id: "chk_001_2", label: "Chụp ảnh hàng hóa", done: false },
       { id: "chk_001_3", label: "Cập nhật vào hệ thống", done: false },
     ],
-    createdAt: iso(new Date(Date.now() - 1000 * 60 * 60 * 4)), // 4h trước
-    updatedAt: iso(),
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(), // 4h trước
+    updatedAt: new Date().toISOString(),
   },
   {
     id: "task_002",
     title: "Lập danh sách đổi trả NCC",
-    description: "Danh sách hàng đổi trả với nhà cung cấp Minh Phú.",
+    description: "Danh sách hàng đổi trả với nhà cung cấp CP.",
     groupId: "grp_vh_kho",
-    workTypeId: "wt_doi_tra",
+    workTypeId: "wt_nhan_hang",
     sourceMessageId: "msg_0008",
     assigneeId: "u_diem_chi",
     assignedById: "u_thanh_truc",
-    status: "todo",
+    status: "done",
     checklist: [
       { id: "chk_002_1", label: "Kiểm tra số lượng hàng lỗi", done: false },
       { id: "chk_002_2", label: "Chuẩn bị phiếu đổi trả", done: false },
     ],
-    createdAt: iso(new Date(Date.now() - 1000 * 60 * 60 * 24)), // hôm qua
-    updatedAt: iso(new Date(Date.now() - 1000 * 60 * 30)),      // 30' trước
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(), // hôm qua
+    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // cách đây 20h
   },
   {
     id: "task_003",
     title: "Xác nhận phế phẩm tồn kho Q4",
     description: "Kiểm tra tình trạng các thùng hỏng.",
     groupId: "grp_vh_kho",
-    workTypeId: "wt_phe_pham",
+    workTypeId: "wt_nhan_hang",
     sourceMessageId: "msg_0012",
-    assigneeId: "u_le_binh",
+    assigneeId: "u_diem_chi",
     assignedById: "u_thanh_truc",
-    status: "awaiting_review",
+    status: "done",
     checklist: [
       { id: "chk_003_1", label: "Ghi nhận danh sách phế phẩm", done: true },
       { id: "chk_003_2", label: "Upload hình ảnh minh chứng", done: true },
       { id: "chk_003_3", label: "Chờ xác nhận Leader", done: false },
     ],
-    createdAt: iso(new Date(Date.now() - 1000 * 60 * 60 * 48)), // 2 ngày trước
-    updatedAt: iso(),
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(), // 2 ngày trước
+    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 40).toISOString(), // cách đây 40h
   },
   {
     id: "task_004",
     title: "Cân hàng nhập cuối ngày",
     description: "Đảm bảo đủ trọng lượng hàng về trước 18h.",
     groupId: "grp_vh_kho",
-    workTypeId: "wt_can_hang",
+    workTypeId: "wt_nhan_hang",
     sourceMessageId: "msg_0003",
-    assigneeId: "u_thanh_truc",
+    assigneeId: "u_diem_chi",
     assignedById: "u_thanh_truc",
-    status: "done",
+    status: "awaiting_review",
     checklist: [
       { id: "chk_004_1", label: "Cập nhật trọng lượng từng kiện", done: true },
       { id: "chk_004_2", label: "Xác nhận báo cáo", done: true },
     ],
-    createdAt: iso(new Date(Date.now() - 1000 * 60 * 60 * 6)),
-    updatedAt: iso(new Date(Date.now() - 1000 * 60 * 60 * 1)),
+    createdAt: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
+    updatedAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(), // 5' trước
   },
   {
     id: "task_005",
     title: "Theo dõi phiếu đổi trả NCC tuần 45",
     description: "Tổng hợp dữ liệu đổi trả và xác nhận với Leader.",
     groupId: "grp_vh_kho",
-    workTypeId: "wt_doi_tra",
+    workTypeId: "wt_nhan_hang",
     sourceMessageId: "msg_0020",
-    assigneeId: "u_thu_an",
+    assigneeId: "u_diem_chi",
     assignedById: "u_thanh_truc",
     status: "todo",
     checklist: [
@@ -97,7 +97,25 @@ export const mockTasks: Task[] = [
       { id: "chk_005_2", label: "Làm việc với NCC", done: false },
       { id: "chk_005_3", label: "Gửi báo cáo cho Leader", done: false },
     ],
-    createdAt: iso(new Date(Date.now() - 1000 * 60 * 15)), // 15' trước
-    updatedAt: iso(),
+    createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(), // 15' trước
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "task_006",
+    title: "Theo dõi phiếu đổi trả NCC",
+    description: "Tổng hợp dữ liệu đổi trả và xác nhận với Leader.",
+    groupId: "grp_vh_kho",
+    workTypeId: "wt_doi_tra",
+    sourceMessageId: "msg_0022",
+    assigneeId: "u_diem_chi",
+    assignedById: "u_thanh_truc",
+    status: "todo",
+    checklist: [
+      { id: "chk_006_1", label: "Thu thập biên bản lỗi", done: false },
+      { id: "chk_006_2", label: "Làm việc với NCC", done: false },
+      { id: "chk_006_3", label: "Gửi báo cáo cho Leader", done: false },
+    ],
+    createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(), // 15' trước
+    updatedAt: new Date().toISOString(),
   },
 ];

@@ -22,7 +22,7 @@ export const mockGroups = [
 // Không hiển thị avatar theo yêu cầu
 export const mockContacts = [
   {
-    id: "u_truc",
+    id: "u_thanh_truc",
     name: "Thanh Trúc",
     role: "Leader" as const,
     online: true,
@@ -31,7 +31,7 @@ export const mockContacts = [
     unreadCount: 0,
   },
   {
-    id: "u_an",
+    id: "u_thu_an",
     name: "Thu An",
     role: "Member" as const,
     online: false,
@@ -49,7 +49,7 @@ export const mockContacts = [
     unreadCount: 0,
   },
   {
-    id: "u_chi",
+    id: "u_diem_chi",
     name: "Diễm Chi",
     role: "Member" as const,
     online: false,

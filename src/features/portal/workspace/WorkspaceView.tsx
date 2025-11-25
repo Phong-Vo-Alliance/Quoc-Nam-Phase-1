@@ -11,6 +11,8 @@ import type {
   GroupChat,
   Message,
   ReceivedInfo,
+  ChecklistItem,
+  ChecklistTemplateItem,
 } from "../types";
 // function scrollToMessage(id: number | string) {
 //   const el = document.getElementById(`msg-${id}`);
@@ -97,6 +99,12 @@ interface WorkspaceViewProps {
   groupMembers: Array<{ id: string; name: string; role?: "Leader" | "Member" }>;
   onChangeTaskStatus: (id: string, nextStatus: Task["status"]) => void;
   onToggleChecklist: (taskId: string, itemId: string, done: boolean) => void;
+  onUpdateTaskChecklist: (taskId: string, next: ChecklistItem[]) => void;
+  applyTemplateToTasks?: (workTypeId: string, template: ChecklistTemplateItem[]) => void;
+  checklistTemplates: Record<string, ChecklistTemplateItem[]>;
+  setChecklistTemplates: (
+    v: React.SetStateAction<Record<string, ChecklistTemplateItem[]>>
+  ) => void;
 
   // mode: "CSKH" | "THUMUA";
   // setMode: (v: "CSKH" | "THUMUA") => void;
@@ -152,7 +160,10 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
     groupMembers,
     onChangeTaskStatus,
     onToggleChecklist,
-
+    onUpdateTaskChecklist,
+    applyTemplateToTasks,
+    checklistTemplates,
+    setChecklistTemplates, 
 
     viewMode,
     workTypes,
@@ -204,7 +215,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
           />
         ) : (
           <LeftSidebar
-            currentUserId={"u_truc"}
+            currentUserId={"u_diem_chi"}
             groups={groups}
             selectedGroup={selectedGroup as any}
             onSelectGroup={(id) => {
@@ -238,8 +249,8 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
           onTogglePin={() => { }}
 
           // NEW:
-          //currentUserId={"u_truc"}  // hoặc lấy từ context đăng nhập
-          //currentUserName={"Thanh Trúc"}
+          //currentUserId={"u_diem_chi"}  // hoặc lấy từ context đăng nhập
+          //currentUserName={"Diễm Chi"}
           //selectedChat={selectedChat}
           currentWorkTypeId={selectedWorkTypeId}
           title={chatTitle}
@@ -277,20 +288,29 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
               // nếu bạn đã có mảng workTypes [{id,name}]
               (workTypes?.find(w => w.id === selectedWorkTypeId)?.name) ?? "—"
             }
-            // (tuỳ chọn) nếu muốn hiển thị tab "Công việc"
+
+            /* Context người dùng + workType */
             viewMode={viewMode}                 // 'lead' | 'staff'
-            tasks={tasks}                        // mảng Task của group hiện tại (nếu có)
-            //  selectedWorkTypeId={selectedWorkTypeId}
-            //  currentUserId={currentUserId}
+             selectedWorkTypeId={selectedWorkTypeId}
+             currentUserId={currentUserId}
+
+            /* Task */
+            tasks={tasks}                        // mảng Task của group hiện tại (nếu có)            
             members={groupMembers}
             onChangeTaskStatus={onChangeTaskStatus}
-            //  onReassignTask={handleReassignTask}
+            onReassignTask={undefined}
             onToggleChecklist={onToggleChecklist}
+            onUpdateTaskChecklist={onUpdateTaskChecklist}
+            checklistTemplates={checklistTemplates}
+            setChecklistTemplates={setChecklistTemplates}
 
+            /* Received Info */
             receivedInfos={receivedInfos}
             onTransferInfo={onTransferInfo}
             onAssignInfo={onAssignInfo}
             onOpenGroupTransfer={openTransferSheet}
+
+            applyTemplateToTasks={applyTemplateToTasks} 
 
           />
 
