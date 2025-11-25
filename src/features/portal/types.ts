@@ -263,3 +263,14 @@ export interface ReceivedInfo {
   transferredToGroupName?: string;
   transferredWorkTypeName?: string;
 }
+
+// ===== Checklist task Template Item =====
+export type ChecklistTemplateItem = {
+  id: string;        // id template
+  label: string;     // tên checklist mặc định
+};
+
+export type ChecklistTemplateMap = Record<
+  string,               // workTypeId
+  ChecklistTemplateItem[]
+>;

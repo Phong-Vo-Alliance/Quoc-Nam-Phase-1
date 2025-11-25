@@ -13,7 +13,7 @@ const iso = (d = new Date()) => d.toISOString();
 // Phòng "Kho Hàng": 1 leader + 3 staff
 export const mockUsers: User[] = [
   {
-    id: "u_truc",
+    id: "u_thanh_truc",
     displayName: "Thanh Trúc",
     email: "truc@example.com",    
     roles: ["leader"], // vai trò hệ thống
@@ -23,7 +23,7 @@ export const mockUsers: User[] = [
     createdAt: iso(),
   },
   {
-    id: "u_an",
+    id: "u_thu_an",
     displayName: "Thu An",
     email: "an@example.com",    
     roles: ["staff"],
@@ -33,7 +33,7 @@ export const mockUsers: User[] = [
     createdAt: iso(),
   },
   {
-    id: "u_chi",
+    id: "u_diem_chi",
     displayName: "Diễm Chi",
     email: "chi@example.com",    
     roles: ["staff"],
@@ -43,7 +43,7 @@ export const mockUsers: User[] = [
     createdAt: iso(),
   },
   {
-    id: "u_binh",
+    id: "u_le_binh",
     displayName: "Lệ Bình",
     email: "binh@example.com",    
     roles: ["staff"],
@@ -81,8 +81,8 @@ export const mockDepartments: Department[] = [
   {
     id: "dep_kho_hang",
     name: "Kho Hàng",
-    leaderId: "u_truc", // Thanh Trúc
-    memberIds: ["u_truc", "u_an", "u_chi", "u_binh"],
+    leaderId: "u_thanh_truc", // Thanh Trúc
+    memberIds: ["u_thanh_truc", "u_thu_an", "u_diem_chi", "u_le_binh"],
     createdAt: iso(),
   },
   {
@@ -150,11 +150,11 @@ export const mockWorkTypesForGroup: WorkType[] = [
 const members: GroupMember[] = [
   // Leaders auto-join theo rule
   { userId: "u_huyen", role: "leader", isAutoJoined: true, joinedAt: iso() }, // leader Vận Hành
-  { userId: "u_truc", role: "leader", isAutoJoined: true, joinedAt: iso() },  // leader Kho Hàng
+  { userId: "u_thanh_truc", role: "leader", isAutoJoined: true, joinedAt: iso() },  // leader Kho Hàng
 
   // Staff do leader add vào
   { userId: "u_ngoc_vang", role: "staff", isAutoJoined: false, joinedAt: iso(), addedById: "u_huyen" },
-  { userId: "u_an",        role: "staff", isAutoJoined: false, joinedAt: iso(), addedById: "u_truc"  },
+  { userId: "u_thu_an",        role: "staff", isAutoJoined: false, joinedAt: iso(), addedById: "u_thanh_truc"  },
 ];
 
 export const mockGroup_VH_Kho: GroupChat = {

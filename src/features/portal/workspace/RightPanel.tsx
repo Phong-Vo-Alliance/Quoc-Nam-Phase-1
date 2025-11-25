@@ -1,7 +1,11 @@
 import React from "react";
 import { RightAccordion } from "../components";
 import { SegmentedTabs } from "../components/SegmentedTabs";
-import type { Task, ReceivedInfo } from "../types";
+import type { Task, ReceivedInfo, ChecklistItem, ChecklistTemplateMap, ChecklistTemplateItem } from "../types";
+import {ChecklistTemplatePanel} from "../components/ChecklistTemplatePanel";
+import {TaskChecklistEditor, TaskChecklistViewer} from "../components/TaskChecklist";
+import {ChecklistTemplateSlideOver} from "../components/ChecklistTemplateSlideOver";
+
 import {
   Users,
   FolderPlus,
@@ -106,9 +110,12 @@ const TaskCard: React.FC<{
   onChangeStatus?: (id: string, next: Task["status"]) => void;
   onReassign?: (id: string, assigneeId: string) => void;
   onToggleChecklist?: (taskId: string, itemId: string, done: boolean) => void;
-}> = ({ t, members, viewMode, onChangeStatus, onReassign, onToggleChecklist }) => {
+  onUpdateTaskChecklist?: (taskId: string, next: ChecklistItem[]) => void;
+}> = ({ t, members, viewMode, onChangeStatus, onReassign, onToggleChecklist, onUpdateTaskChecklist }) => {
   const [open, setOpen] = React.useState(false);
   const assigneeName = members.find((m) => m.id === t.assigneeId)?.name ?? t.assigneeId;
+  const [editingItem, setEditingItem] = React.useState<ChecklistItem | null>(null);
+  const [newLabel, setNewLabel] = React.useState("");
 
   const total = t.checklist?.length ?? 0;
   const doneCount = t.checklist?.filter((c) => c.done).length ?? 0;
@@ -120,9 +127,65 @@ const TaskCard: React.FC<{
     t.progressText ??
     (total ? `${doneCount}/${total} mục` : "Không có checklist");
 
+  const [editChecklist, setEditChecklist] = React.useState(false);
+  const canEditStructure = viewMode === "lead" && t.status === "todo";
+
   return (
-    <div
-      className="
+    <>
+      {/* Checklist Edit Dialog */}
+      {
+        editingItem && (
+          <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-4 w-[300px] shadow-xl">
+              <div className="text-sm font-semibold mb-2">
+                {editingItem?.id === "new" ? "Thêm mục" : "Chỉnh sửa mục"}
+              </div>
+
+              <input
+                className="w-full rounded border px-2 py-1 text-sm"
+                value={newLabel}
+                autoFocus
+                onChange={(e) => setNewLabel(e.target.value)}
+              />
+
+              <div className="flex justify-end gap-2 mt-3">
+                <button
+                  className="text-xs px-2 py-1 rounded bg-gray-100"
+                  onClick={() => setEditingItem(null)}
+                >
+                  Huỷ
+                </button>
+                <button
+                  className="text-xs px-3 py-1 rounded bg-emerald-600 text-white"
+                  onClick={() => {
+                    let updated;
+
+                    if (editingItem.id === "new") {
+                      updated = [...(t.checklist ?? []), {
+                        id: "chk_" + Math.random().toString(36).slice(2),
+                        label: newLabel,
+                        done: false,
+                      }];
+                    } else {
+                      updated = (t.checklist ?? []).map((i) =>
+                        i.id === editingItem.id ? { ...i, label: newLabel } : i
+                      );
+                    }
+
+                    onUpdateTaskChecklist?.(t.id, updated);
+                    setEditingItem(null);
+                  }}
+                >
+                  Lưu
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      <div
+        className="
         relative
         rounded-2xl
         bg-white/80
@@ -135,181 +198,244 @@ const TaskCard: React.FC<{
         duration-200
         hover:-translate-y-[1px]
       "
-    >
-      {/* Floating status badge góc phải trên */}
-      <div className="absolute -top-3 right-2">
-        <StatusBadge s={t.status} />
-      </div>
+      >
+        {/* Floating status badge góc phải trên */}
+        <div className="absolute -top-3 right-2">
+          <StatusBadge s={t.status} />
+        </div>
 
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          {/* Title */}
-          <div className="text-[13px] font-semibold leading-snug truncate">
-            {truncateMessageTitle(t.title || t.description)}
-          </div>
+        <div className="flex flex-col gap-3">
+          <div className="min-w-0 flex-1">
+            {/* Title */}
+            <div className="text-[13px] font-semibold leading-snug truncate">
+              {truncateMessageTitle(t.title || t.description)}
+            </div>
 
-          {/* Meta: loại việc, progress, assignee */}
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-gray-500">
-            <span>
-              Loại việc:{" "}
-              <span className="font-medium text-gray-700">
-                {workTypeLabel}
+            {/* Meta: loại việc, progress, assignee */}
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-gray-500">
+              <span>
+                Loại việc:{" "}
+                <span className="font-medium text-gray-700">
+                  {workTypeLabel}
+                </span>
               </span>
-            </span>
 
+              {total > 0 && (
+                <>
+                  <span>•</span>
+                  <span>
+                    Checklist:{" "}
+                    <span className="font-medium text-gray-700">
+                      {progressText}
+                    </span>
+                  </span>
+                </>
+              )}
+
+              {viewMode === "lead" && (
+                <>
+                  <span>•</span>
+                  <span>
+                    Giao cho:{" "}
+                    <span className="font-medium text-gray-700">
+                      <select
+                        className="mt-1 rounded-md border px-2 py-0.5 text-[11px] bg-white"
+                        value={t.assigneeId}
+                        onChange={(e) => onReassign?.(t.id, e.target.value)}
+                      >
+                        {members.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.name}
+                          </option>
+                        ))}
+                      </select>
+
+                    </span>
+                  </span>
+                </>
+              )}
+            </div>
+
+            {/* Progress bar */}
             {total > 0 && (
-              <>
-                <span>•</span>
-                <span>
-                  Checklist:{" "}
-                  <span className="font-medium text-gray-700">
-                    {progressText}
-                  </span>
-                </span>
-              </>
-            )}
-
-            {viewMode === "lead" && (
-              <>
-                <span>•</span>
-                <span>
-                  Giao cho:{" "}
-                  <span className="font-medium text-gray-700">
-                    {assigneeName}
-                  </span>
-                </span>
-              </>
-            )}
-          </div>
-
-          {/* Progress bar */}
-          {total > 0 && (
-            <div className="mt-2 h-1.5 w-full rounded-full bg-gray-200 overflow-hidden">
-              <div
-                className={`
+              <div className="mt-2 h-1.5 w-full rounded-full bg-gray-200 overflow-hidden">
+                <div
+                  className={`
                     h-full rounded-full transition-all duration-300
                     ${progress >= 60
                       ? "bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-600"
                       : "bg-emerald-500"
                     }
                 `}
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          )}
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            )}
 
-          {/* Checklist */}
-          {t.checklist?.length ? (
-            <div className="mt-2">
-              {/* Toggle */}
-              <button
-                type="button"
-                className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 hover:text-emerald-800 hover:underline"
-                onClick={() => setOpen((v) => !v)}
-              >
-                {open ? (
-                  <ChevronDown className="w-3 h-3" />
-                ) : (
-                  <ChevronRight className="w-3 h-3" />
-                )}
-                Checklist ({doneCount}/{total})
-              </button>
+            {/* Checklist */}
+            {t.checklist?.length ? (
+              <div className="mt-2">
+                {/* Toggle */}
+                <div className="flex items-center justify-between pr-1">
+                  {/* Checklist toggle */}
+                  <div
+                    className="
+                    inline-flex items-center gap-1 
+                    text-[11px] font-medium 
+                    text-emerald-700 
+                    cursor-pointer 
+                    hover:text-emerald-800 hover:underline
+                    select-none
+                  "
+                    onClick={() => setOpen((v) => !v)}
+                  >
+                    {open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                    Checklist ({doneCount}/{total})
+                  </div>
 
-              {/* Items */}
-              {open && (
-                <ul className="mt-2 space-y-1">
-                  {t.checklist.map((c) => (
-                    <li
-                      key={c.id}
-                      className="flex items-start gap-2 text-[12px] leading-snug"
+                  {/* + Thêm (only when lead + todo) */}
+                  {canEditStructure && (
+                    <span
+                      className="
+                      text-[11px] text-emerald-700 
+                      cursor-pointer hover:underline select-none
+                    "
+                      // onClick={() => {
+                      //   const newItem = {
+                      //     id: "chk_" + Math.random().toString(36).slice(2),
+                      //     label: "",
+                      //     done: false,
+                      //   };
+                      //   onUpdateTaskChecklist?.(t.id, [...(t.checklist ?? []), newItem]);
+                      //   setOpen(true);
+                      // }}
+                      onClick={() => {
+                        setEditingItem({ id: "new", label: "", done: false });
+                        setNewLabel("");
+                        setOpen(true);
+                      }}
                     >
-                      {c.done ? (
-                        <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
-                          <Check className="w-3 h-3" />
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          className=" checklist-btn
-                              mt-[2px]
-                              h-4 w-4 shrink-0 rounded-full
-                              border-[1.5px] border-emerald-400
-                              bg-white
-                              hover:shadow-[0_0_4px_rgba(16,185,129,0.35)]
-                              transition flex items-center justify-center
-                          "
-                          onClick={() => onToggleChecklist?.(t.id, c.id, true)}
-                        />
-                      )}
+                      + Thêm
+                    </span>
+                  )}
+                </div>
 
-                      <span
-                        className={c.done ? "text-gray-400 line-through" : "text-gray-700"}
+                {/* Items */}
+                {open && (
+                  <ul className="mt-2 space-y-1">
+                    {t.checklist.map((c) => (
+                      <li
+                        key={c.id}
+                        className="group flex items-center gap-2 text-[12px] leading-snug rounded-md px-2 py-1 hover:bg-emerald-50 transition-all cursor-default relative z-0"
                       >
-                        {c.label}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                        {/* Checkbox */}
+                        {c.done ? (
+                          <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
+                            <Check className="w-3 h-3" />
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            className=" checklist-btn
+                            h-4 w-4 shrink-0 rounded-full
+                            border-[1.5px] border-emerald-400
+                            bg-white
+                            hover:shadow-[0_0_4px_rgba(16,185,129,0.35)]
+                            transition flex items-center justify-center
+                          "
+                            onClick={() => onToggleChecklist?.(t.id, c.id, true)}
+                          />
+                        )}
 
-              )}
-            </div>
-          ) : (
-            <div className="mt-2 text-[11px] text-gray-400">
-              Không có checklist.
-            </div>
-          )}
-        </div>
+                        {/* Label */}
+                        <span className={c.done ? "text-gray-400 line-through flex-1" : "text-gray-700 flex-1"}>
+                          {c.label}
+                        </span>
 
-        {/* Quick Actions */}
-        <div className="shrink-0 flex flex-col items-end gap-1 pt-1">
-          {viewMode === "staff" && t.status === "todo" && (
-            <button
-              onClick={() => onChangeStatus?.(t.id, "in_progress")}
-              className="rounded-md border px-2 py-0.5 text-[11px] hover:bg-emerald-50"
-            >
-              Bắt đầu
-            </button>
-          )}
+                        {/* Actions when editable */}
+                        {canEditStructure && (
+                          <div className="flex gap-1 ml-auto opacity-0 group-hover:opacity-100 transition">
+                            {/* Edit */}
+                            <Edit2
+                              className="w-3.5 h-3.5 text-gray-500 cursor-pointer hover:text-emerald-600"
+                              onClick={() => {
+                                setEditingItem(c);
+                                setNewLabel(c.label);
+                              }}
+                            />
 
-          {viewMode === "staff" && t.status === "in_progress" && (
-            <button
-              onClick={() => onChangeStatus?.(t.id, "awaiting_review")}
-              className="rounded-md border px-2 py-0.5 text-[11px] hover:bg-amber-50"
-            >
-              Chờ duyệt
-            </button>
-          )}
+                            {/* Delete */}
+                            <Trash2
+                              className="w-3.5 h-3.5 text-rose-500 cursor-pointer hover:text-rose-600"
+                              onClick={() => {
+                                const updated = (t.checklist ?? []).filter((i) => i.id !== c.id);
+                                onUpdateTaskChecklist?.(t.id, updated);
+                              }}
+                            />
+                          </div>
+                        )}
+                      </li>
+                    ))}
 
-          {viewMode === "lead" &&
-            ["todo", "in_progress", "awaiting_review"].includes(t.status) && (
+                  </ul>
+
+                )}
+              </div>
+            ) : (
+              <div className="mt-2 text-[11px] text-gray-400">
+                Không có checklist.
+              </div>
+            )}
+          </div>
+
+          {/* Quick Actions */}
+          <div className="shrink-0 flex flex-col items-end gap-1 pt-1">
+            {viewMode === "staff" && t.status === "todo" && (
               <button
-                onClick={() => onChangeStatus?.(t.id, "done")}
+                onClick={() => onChangeStatus?.(t.id, "in_progress")}
                 className="rounded-md border px-2 py-0.5 text-[11px] hover:bg-emerald-50"
               >
-                Hoàn tất
+                Bắt đầu
               </button>
             )}
 
-          {viewMode === "lead" && (
-            <select
-              className="mt-1 rounded-md border px-2 py-0.5 text-[11px] bg-white"
-              value={t.assigneeId}
-              onChange={(e) => onReassign?.(t.id, e.target.value)}
-            >
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-          )}
+            {viewMode === "staff" && t.status === "in_progress" && (
+              <button
+                onClick={() => onChangeStatus?.(t.id, "awaiting_review")}
+                className="rounded-md border px-2 py-0.5 text-[11px] hover:bg-amber-50"
+              >
+                Chờ duyệt
+              </button>
+            )}
+
+            {viewMode === "lead" &&
+              ["todo", "in_progress", "awaiting_review"].includes(t.status) && (
+                <button
+                  onClick={() => onChangeStatus?.(t.id, "done")}
+                  className="rounded-md border px-2 py-0.5 text-[11px] hover:bg-emerald-50"
+                >
+                  Hoàn tất
+                </button>
+              )}
+
+          </div>
         </div>
       </div>
-    </div>
+
+      <style>
+        {`
+        @keyframes fade-in {
+          from { opacity: 0; transform: scale(0.96); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.18s ease-out;
+        }
+      `}
+      </style>   
+    </>
   );
 };
-
-
 
 /* ===============================
    RECEIVED INFO SECTION (NEW)
@@ -406,7 +532,6 @@ const ReceivedInfoSection: React.FC<{
   );
 };
 
-
 /* =============== RightPanel =============== */
 export const RightPanel: React.FC<{
   // Tabs
@@ -433,6 +558,10 @@ export const RightPanel: React.FC<{
   onTransferInfo?: (infoId: string, departmentId: string) => void;
   onAssignInfo?: (info: ReceivedInfo) => void;
   onOpenGroupTransfer?: (info: ReceivedInfo) => void;
+  onUpdateTaskChecklist?: (taskId: string, next: ChecklistItem[]) => void;
+  checklistTemplates?: ChecklistTemplateMap;
+  setChecklistTemplates?: React.Dispatch<React.SetStateAction<ChecklistTemplateMap>>;
+  applyTemplateToTasks?: (workTypeId: string, template: ChecklistTemplateItem[]) => void;
 }> = ({
   tab,
   setTab,
@@ -451,8 +580,40 @@ export const RightPanel: React.FC<{
   onTransferInfo,
   onAssignInfo,
   onOpenGroupTransfer,
+  onUpdateTaskChecklist,  
+  checklistTemplates = {},
+  setChecklistTemplates,
+  applyTemplateToTasks,
 }) => {
+  // Helper: kiểm tra task có phải của ngày hôm nay không
+  const isToday = (iso?: string) => {
+    if (!iso) return false;
+    const d = new Date(iso);
+    const t = new Date();
+    return (
+      d.getFullYear() === t.getFullYear() &&
+      d.getMonth() === t.getMonth() &&
+      d.getDate() === t.getDate()
+    );
+  };
+
+  // Toggle cho từng nhóm task ở chế độ lead
+  const [showLeadAwaiting, setShowLeadAwaiting] = React.useState(true);
+  const [showLeadTodo, setShowLeadTodo] = React.useState(true);
+  const [showLeadInProgress, setShowLeadInProgress] = React.useState(true);
+
+  // Set highlight cho các nhóm task ở chế độ lead
+  const awaitingOpenedRef = React.useRef(false);
+  // const todoOpenedRef = React.useRef(false);
+  // const inProgressOpenedRef = React.useRef(false);
+
+  const [highlightAwaiting, setHighlightAwaiting] = React.useState(false);
+  // const [highlightTodo, setHighlightTodo] = React.useState(false);
+  // const [highlightInProgress, setHighlightInProgress] = React.useState(false);
+
   const isTasksTab = tab === "order" || tab === "tasks";
+ 
+  const [templateOpen, setTemplateOpen] = React.useState(false);
 
   // ====== Files state - mock data (demo) ======  
   const initialMediaItems: FileNode[] = [
@@ -479,14 +640,36 @@ export const RightPanel: React.FC<{
  
 
   // ====== Tasks derived ======
-  const tasksByWork = React.useMemo(
+  // const tasksByWork = React.useMemo(
+  //   () => tasks.filter((t) => !selectedWorkTypeId || t.workTypeId === selectedWorkTypeId),
+  //   [tasks, selectedWorkTypeId]
+  // );
+  // Lọc theo workType trước
+  const tasksByWorkRaw = React.useMemo(
     () => tasks.filter((t) => !selectedWorkTypeId || t.workTypeId === selectedWorkTypeId),
     [tasks, selectedWorkTypeId]
   );
-  const myTasks = React.useMemo(
-    () => (currentUserId ? tasksByWork.filter((t) => t.assigneeId === currentUserId) : tasksByWork),
-    [tasksByWork, currentUserId]
-  );
+
+  // Leader thấy toàn bộ task của hôm nay
+  // Staff chỉ thấy task của mình trong hôm nay
+  const tasksToday = React.useMemo(() => {
+    if (viewMode === "lead") {
+      return tasksByWorkRaw.filter(t => isToday(t.createdAt));
+    }
+    if (viewMode === "staff") {
+      return tasksByWorkRaw.filter(
+        t => t.assigneeId === currentUserId && isToday(t.createdAt)
+      );
+    }
+    return tasksByWorkRaw;
+  }, [tasksByWorkRaw, viewMode, currentUserId]);
+
+  const myTasks = tasksToday;
+  // const myTasks = React.useMemo(
+  //   () => (currentUserId ? tasksByWork.filter((t) => t.assigneeId === currentUserId) : tasksByWork),
+  //   [tasksByWork, currentUserId]
+  // );
+
   const splitByStatus = (list: Task[]) => ({
     todo: list.filter((t) => t.status === "todo"),
     inProgress: list.filter((t) => t.status === "in_progress"),
@@ -495,12 +678,29 @@ export const RightPanel: React.FC<{
   });
   const staffBuckets = splitByStatus(myTasks);
   const [assigneeFilter, setAssigneeFilter] = React.useState<string>("all");
+  // const leadBuckets = React.useMemo(() => {
+  //   const base = assigneeFilter === "all" ? tasksByWork : tasksByWork.filter((t) => t.assigneeId === assigneeFilter);
+  //   return splitByStatus(base);
+  // }, [assigneeFilter, tasksByWork]);
   const leadBuckets = React.useMemo(() => {
-    const base = assigneeFilter === "all" ? tasksByWork : tasksByWork.filter((t) => t.assigneeId === assigneeFilter);
+    const base = assigneeFilter === "all"
+      ? tasksToday
+      : tasksToday.filter(t => t.assigneeId === assigneeFilter);
     return splitByStatus(base);
-  }, [assigneeFilter, tasksByWork]);
+  }, [assigneeFilter, tasksToday]);
 
   const [showCompleted, setShowCompleted] = React.useState(false);
+
+  // Checklist template panel
+  const [showTemplate, setShowTemplate] = React.useState(false);
+  
+  // const workTypeTemplate =
+  // selectedWorkTypeId && checklistTemplates[selectedWorkTypeId]
+  //   ? checklistTemplates[selectedWorkTypeId]
+  //   : [];
+  const workTypeKey = selectedWorkTypeId ?? "__default__";
+
+  const workTypeTemplate = checklistTemplates[workTypeKey] ?? [];
 
   return (
     <aside className="bg-white shadow-sm flex flex-col min-h-0">
@@ -627,6 +827,9 @@ export const RightPanel: React.FC<{
                           onChangeStatus={onChangeTaskStatus}
                           onReassign={onReassignTask}
                           onToggleChecklist={onToggleChecklist}
+                          onUpdateTaskChecklist={(taskId, next) => {
+                            onUpdateTaskChecklist?.(taskId, next)
+                          }}
                         />
                       ))}
                       {staffBuckets.inProgress.map((t) => (
@@ -638,6 +841,9 @@ export const RightPanel: React.FC<{
                           onChangeStatus={onChangeTaskStatus}
                           onReassign={onReassignTask}
                           onToggleChecklist={onToggleChecklist}
+                          onUpdateTaskChecklist={(taskId, next) => {
+                            onUpdateTaskChecklist?.(taskId, next)
+                          }}
                         />
                       ))}
                     </div>
@@ -661,7 +867,7 @@ export const RightPanel: React.FC<{
                         viewMode="staff"
                         onChangeStatus={onChangeTaskStatus}
                         onReassign={onReassignTask}
-                        onToggleChecklist={onToggleChecklist}
+                        onToggleChecklist={onToggleChecklist}                        
                       />
                     ))}
                   </div>
@@ -690,7 +896,12 @@ export const RightPanel: React.FC<{
                         </div>
 
                         {tasks
-                          .filter((t) => t.status === "done" && (!selectedWorkTypeId || t.workTypeId === selectedWorkTypeId))
+                            .filter(t =>
+                              t.status === "done" &&
+                              t.assigneeId === currentUserId &&
+                              !isToday(t.updatedAt) &&
+                              (!selectedWorkTypeId || t.workTypeId === selectedWorkTypeId)
+                            )
                           .map((t) => (
                             <div key={t.id} className="mb-2 rounded-lg border p-2">
                               <div className="text-sm font-medium">{t.title}</div>
@@ -744,6 +955,22 @@ export const RightPanel: React.FC<{
                           ))}
                         </select>
                       </div>
+
+                      <span
+                        className="
+                          ml-auto
+                          mt-2
+                          text-[12px]
+                          text-emerald-700
+                          cursor-pointer
+                          hover:underline
+                          select-none
+                        "
+                        onClick={() => setTemplateOpen(true)}
+                      >
+                        Checklist mặc định
+                      </span>
+                          
                     </div>
                   </div>
 
@@ -769,69 +996,101 @@ export const RightPanel: React.FC<{
                     {/* AWAITING REVIEW */}
                     {leadBuckets.awaiting.length > 0 && (
                       <section>
-                        <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-gray-600">
+                        <div
+                          className="mb-1 flex items-center gap-2 text-xs font-semibold text-gray-600 cursor-pointer select-none"
+                           onClick={() => {
+                             setShowLeadAwaiting((prev) => {
+                               const next = !prev;
+                               if (next && !awaitingOpenedRef.current) {
+                                 awaitingOpenedRef.current = true;
+                                 setHighlightAwaiting(true);
+                                 setTimeout(() => setHighlightAwaiting(false), 700);
+                               }
+                               return next;
+                             });
+                           }}
+                        >
                           <span className="inline-flex h-2 w-2 rounded-full bg-amber-500" />
-                          <span>Chờ duyệt ({leadBuckets.awaiting.length})</span>
+                          <span>Chờ duyệt ({leadBuckets.awaiting.length}) {showLeadAwaiting ? " ▲" : " ▼"}</span>
                         </div>
-                        <div className="space-y-3">
-                          {leadBuckets.awaiting.map((t) => (
-                            <TaskCard
-                              key={t.id}
-                              t={t}
-                              members={members}
-                              viewMode="lead"
-                              onChangeStatus={onChangeTaskStatus}
-                              onReassign={onReassignTask}
-                              onToggleChecklist={onToggleChecklist}
-                            />
-                          ))}
-                        </div>
+                        {showLeadAwaiting && (
+                          <div className={`space-y-3 transition-colors duration-300 ${highlightAwaiting ? "bg-amber-50/80 rounded-lg -mx-2 px-2 py-1" : ""
+                            }`}
+                          >
+                            {leadBuckets.awaiting.map((t) => (
+                              <TaskCard
+                                key={t.id}
+                                t={t}
+                                members={members}
+                                viewMode="lead"
+                                onChangeStatus={onChangeTaskStatus}
+                                onReassign={onReassignTask}
+                                onToggleChecklist={onToggleChecklist}
+                              />
+                            ))}
+                          </div>
+                        )}
                       </section>
                     )}
 
                     {/* TODO */}
                     {leadBuckets.todo.length > 0 && (
                       <section>
-                        <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-gray-600">
+                        <div
+                          className="mb-1 flex items-center gap-2 text-xs font-semibold text-gray-600 cursor-pointer select-none"
+                          onClick={() => setShowLeadTodo(v => !v)}
+                        >
                           <span className="inline-flex h-2 w-2 rounded-full bg-amber-400" />
-                          <span>Chưa xử lý ({leadBuckets.todo.length})</span>
+                          <span>Chưa xử lý ({leadBuckets.todo.length}) {showLeadTodo ? " ▲" : " ▼"}</span>
                         </div>
-                        <div className="space-y-3">
-                          {leadBuckets.todo.map((t) => (
-                            <TaskCard
-                              key={t.id}
-                              t={t}
-                              members={members}
-                              viewMode="lead"
-                              onChangeStatus={onChangeTaskStatus}
-                              onReassign={onReassignTask}
-                              onToggleChecklist={onToggleChecklist}
-                            />
-                          ))}
-                        </div>
+                        {showLeadTodo && (
+                          <div className="space-y-3">
+                            {leadBuckets.todo.map((t) => (
+                              <TaskCard
+                                key={t.id}
+                                t={t}
+                                members={members}
+                                viewMode="lead"
+                                onChangeStatus={onChangeTaskStatus}
+                                onReassign={onReassignTask}
+                                onToggleChecklist={onToggleChecklist}
+                                onUpdateTaskChecklist={onUpdateTaskChecklist}
+                              />
+                            ))}
+                          </div>
+                        )}
                       </section>
                     )}
 
                     {/* IN PROGRESS */}
                     {leadBuckets.inProgress.length > 0 && (
                       <section>
-                        <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-gray-600">
+                        <div
+                          className="mb-1 flex items-center gap-2 text-xs font-semibold text-gray-600 cursor-pointer select-none"
+                          onClick={() => setShowLeadInProgress(v => !v)}
+                        >
                           <span className="inline-flex h-2 w-2 rounded-full bg-sky-400" />
-                          <span>Đang xử lý ({leadBuckets.inProgress.length})</span>
+                          <span>
+                            Đang xử lý ({leadBuckets.inProgress.length})
+                            {showLeadInProgress ? " ▲" : " ▼"}
+                          </span>
                         </div>
-                        <div className="space-y-3">
-                          {leadBuckets.inProgress.map((t) => (
-                            <TaskCard
-                              key={t.id}
-                              t={t}
-                              members={members}
-                              viewMode="lead"
-                              onChangeStatus={onChangeTaskStatus}
-                              onReassign={onReassignTask}
-                              onToggleChecklist={onToggleChecklist}
-                            />
-                          ))}
-                        </div>
+
+                        {showLeadInProgress && (
+                          <div className="space-y-3">
+                            {leadBuckets.inProgress.map((t) => (
+                              <TaskCard
+                                key={t.id}
+                                t={t}
+                                members={members}
+                                viewMode="lead"
+                                onChangeStatus={onChangeTaskStatus}
+                                onReassign={onReassignTask}
+                                onToggleChecklist={onToggleChecklist}
+                              />
+                            ))}
+                          </div>
+                        )}
                       </section>
                     )}
                     
@@ -844,8 +1103,20 @@ export const RightPanel: React.FC<{
           </div>
         )}
 
-      </div>
-      
+        <ChecklistTemplateSlideOver
+          open={templateOpen}
+          onClose={() => setTemplateOpen(false)}
+          workTypeName={workTypeName}
+          template={workTypeTemplate}
+          onChange={(next) => {
+            setChecklistTemplates?.((prev) => ({
+              ...prev,
+              [workTypeKey]: next,
+            }));
+          }}
+        />
+
+      </div>      
     </aside>
   );
 };

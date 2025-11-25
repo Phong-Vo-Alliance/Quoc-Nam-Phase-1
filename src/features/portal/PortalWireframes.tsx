@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ToastContainer, CloseNoteModal, FilePreviewModal } from './components';
-import type { LeadThread, Task, TaskStatus, ToastKind, ToastMsg, FileAttachment, PinnedMessage, GroupChat, Message, ReceivedInfo, WorkType } from './types';
+import type { LeadThread, Task, TaskStatus, ToastKind, ToastMsg, FileAttachment, PinnedMessage, GroupChat, Message, ReceivedInfo, WorkType, ChecklistItem } from './types';
 import { WorkspaceView } from './workspace/WorkspaceView';
 import { TeamMonitorView } from './lead/TeamMonitorView';
 import { MainSidebar } from "./components/MainSidebar";
@@ -12,6 +12,7 @@ import { mockMessagesByWorkType } from "@/data/mockMessages";
 import { DepartmentTransferSheet } from '@/components/sheet/DepartmentTransferSheet';
 import { AssignTaskSheet } from '@/components/sheet/AssignTaskSheet';
 import { GroupTransferSheet } from "@/components/sheet/GroupTransferSheet";
+import type { ChecklistTemplateMap, ChecklistTemplateItem } from './types';
 
 
 export default function PortalWireframes() {
@@ -156,11 +157,14 @@ export default function PortalWireframes() {
     id: "grp_vh_kho", // mặc định mở nhóm “Vận hành - Kho Hàng”
   });
 
+  // Checklist Template theo WorkType
+  const [checklistTemplates, setChecklistTemplates] = React.useState<ChecklistTemplateMap>({});
+
   const [tasks, setTasks] = React.useState(() => structuredClone(mockTasks));
 
-  const currentUser = 'Lê Chi';
-  const currentUserId = 'u-chi';
-  const members = ['Nguyễn An', 'Trần Bình', 'Lê Chi'];
+  const currentUser = 'Diễm Chi';
+  const currentUserId = 'u_diem_chi';
+  const members = ['Thu An', 'Lệ Bình', 'Diễm Chi'];
   //const now = new Date().toISOString();
   const nowIso = () => new Date().toISOString();
 
@@ -168,12 +172,12 @@ export default function PortalWireframes() {
     {
       id: "task-001",
       groupId: "grp-vanhanh-kho",
-      workTypeId: "nhan_hang",
+      workTypeId: "wt_nhan_hang",
       sourceMessageId: "msg-001",
       title: "PO#1246 – Nhận hàng tại kho HCM",
       description: "Nhận hàng lô số 1246 cần kiểm tra số lượng và tình trạng.",
-      assigneeId: "staff-an",
-      assignedById: "leader-chi",
+      assigneeId: "u_thu_an",
+      assignedById: "u_thanh_truc",
       status: "todo",
       priority: "normal",
       dueAt: new Date(Date.now() + 3 * 86400000).toISOString(),
@@ -201,8 +205,8 @@ export default function PortalWireframes() {
       sourceMessageId: "msg-002",
       title: "Xử lý đổi trả đơn hàng #5689",
       description: "Khách yêu cầu đổi do sai kích thước.",
-      assigneeId: "staff-binh",
-      assignedById: "leader-chi",
+      assigneeId: "u_diem_chi",
+      assignedById: "u_thanh_truc",
       status: "in_progress",
       priority: "high",
       dueAt: new Date(Date.now() + 2 * 86400000).toISOString(),
@@ -306,8 +310,23 @@ export default function PortalWireframes() {
     });
   }
 
+  // React.useEffect(() => {
+  //   setTasks(prev => enrichTasks(prev, selectedGroup?.workTypes ?? []));
+  // }, [selectedGroup]);
+
   React.useEffect(() => {
-    setTasks(prev => enrichTasks(prev, selectedGroup?.workTypes ?? []));
+    setTasks(prev =>
+      prev.map(t => {
+        const wt = selectedGroup?.workTypes?.find(w => w.id === t.workTypeId);
+        return {
+          ...t,
+          workTypeName: wt?.name ?? t.workTypeId,
+          progressText: t.checklist?.length
+            ? `${t.checklist.filter(c => c.done).length}/${t.checklist.length} mục`
+            : "Không có checklist",
+        };
+      })
+    );
   }, [selectedGroup]);
 
   const groupMembers: { id: string; name: string; role?: "Leader" | "Member" | undefined; }[] = [
@@ -326,7 +345,7 @@ export default function PortalWireframes() {
   ): Task => ({
     id,
     groupId: "grp-vanhanh-kho",
-    workTypeId: "nhan_hang",
+    workTypeId: "wt_nhan_hang",
     sourceMessageId: id,
     title,
     description: "",
@@ -359,6 +378,49 @@ export default function PortalWireframes() {
           updatedAt: new Date().toISOString(),
         }
         : t
+      )
+    );
+  };
+
+  const handleUpdateTaskChecklist = (taskId: string, next: ChecklistItem[]) => {
+    setTasks(prev => {
+      return prev.map(t => {
+        if (t.id !== taskId) return t;
+
+        const updated = {
+          ...t,
+          checklist: [...next],
+          updatedAt: new Date().toISOString(),
+        };
+
+        // enrich progressText ngay lập tức
+        const wt = selectedGroup?.workTypes?.find(w => w.id === updated.workTypeId);
+        return {
+          ...updated,
+          workTypeName: wt?.name ?? updated.workTypeId,
+          progressText: updated.checklist.length
+            ? `${updated.checklist.filter(c => c.done).length}/${updated.checklist.length} mục`
+            : "Không có checklist",
+        };
+      });
+    });
+  };
+
+
+  // Áp dụng template mới cho tất cả Task.todo thuộc workType
+  const applyTemplateToTasks = (workTypeId: string, tpl: ChecklistTemplateItem[]) => {
+    setTasks(prev =>
+      prev.map(t =>
+        t.workTypeId === workTypeId && t.status === "todo"
+          ? {
+            ...t,
+            checklist: tpl.map(it => ({
+              id: "chk_" + Math.random().toString(36).slice(2),
+              label: it.label,
+              done: false,
+            })),
+          }
+          : t
       )
     );
   };
@@ -429,7 +491,7 @@ export default function PortalWireframes() {
         prev.some((x) => x.id === id)
           ? prev
           : [
-            createMockTask(id, title || id, "in_progress", currentUser),
+            createMockTask(id, title || id, "todo", currentUser),
             ...prev,
           ]
       );
@@ -642,7 +704,8 @@ export default function PortalWireframes() {
     title: string;
     sourceMessageId?: string;
     assigneeId?: string;
-  }): void => {
+  }): void => {        
+        
     const newTask: Task = {
       id: "task_" + Date.now(),
       title,
@@ -652,8 +715,13 @@ export default function PortalWireframes() {
       assigneeId: assigneeId ?? currentUserId, // nếu không có thì giao cho currentUser
       assignedById: currentUser, // use currentUser (string) which exists in this scope
       workTypeId: selectedWorkTypeId,
-      status: "in_progress",
-      checklist: [],
+      status: "todo",
+      checklist: (checklistTemplates[selectedWorkTypeId] ?? []).map(it => ({
+        id: "chk_" + Math.random().toString(36).slice(2),
+        label: it.label,
+        done: false,
+      })),
+
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -798,7 +866,11 @@ export default function PortalWireframes() {
             tasks={tasks}
             onChangeTaskStatus={handleChangeTaskStatus}
             onToggleChecklist={handleToggleChecklist}
+            onUpdateTaskChecklist={handleUpdateTaskChecklist}
             groupMembers={groupMembers}
+            applyTemplateToTasks={applyTemplateToTasks}
+            checklistTemplates={checklistTemplates}
+            setChecklistTemplates={setChecklistTemplates}
 
             // Tiếp nhận thông tin
             onReceiveInfo={handleReceiveInfo}
