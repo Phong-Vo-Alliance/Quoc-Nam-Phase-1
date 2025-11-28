@@ -102,10 +102,8 @@ interface WorkspaceViewProps {
   onToggleChecklist: (taskId: string, itemId: string, done: boolean) => void;
   onUpdateTaskChecklist: (taskId: string, next: ChecklistItem[]) => void;
   applyTemplateToTasks?: (workTypeId: string, template: ChecklistTemplateItem[]) => void;
-  checklistTemplates: Record<string, ChecklistTemplateItem[]>;
-  setChecklistTemplates: (
-    v: React.SetStateAction<Record<string, ChecklistTemplateItem[]>>
-  ) => void;
+  checklistTemplates: Record<string, Record<string, ChecklistTemplateItem[]>>; // workTypeId -> variantId -> template
+  setChecklistTemplates: React.Dispatch<React.SetStateAction<Record<string, Record<string, ChecklistTemplateItem[]>>>>;
 
   // mode: "CSKH" | "THUMUA";
   // setMode: (v: "CSKH" | "THUMUA") => void;
@@ -295,6 +293,11 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
             workTypeName={
               // nếu bạn đã có mảng workTypes [{id,name}]
               (workTypes?.find(w => w.id === selectedWorkTypeId)?.name) ?? "—"
+            }
+
+            checklistVariants={
+              selectedGroup?.workTypes?.find(w => w.id === selectedWorkTypeId)
+                ?.checklistVariants
             }
 
             /* Context người dùng + workType */

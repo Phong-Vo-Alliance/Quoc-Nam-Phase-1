@@ -1,6 +1,7 @@
 import React from "react";
-import { ChecklistTemplateItem } from "../types";
-import { Plus, X as XIcon } from "lucide-react";
+import { ChecklistTemplateItem, ChecklistVariant } from "../types";
+import { Plus, X as XIcon, Trash } from "lucide-react";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 
 type Props = {
   open: boolean;
@@ -8,6 +9,13 @@ type Props = {
   workTypeName: string;
   template: ChecklistTemplateItem[];
   onChange: (next: ChecklistTemplateItem[]) => void;
+
+  // Optional – danh sách “Dạng checklist” cho Loại việc hiện tại
+  checklistVariants?: ChecklistVariant[];
+  // Variant đang được chọn (ví dụ khi lead vừa chọn sub-work-type trong AssignTaskSheet)
+  activeVariantId?: string;
+  // Notify ra ngoài khi user đổi “Dạng checklist”
+  onChangeVariant?: (variantId: string) => void;
 };
 
 export const ChecklistTemplateSlideOver: React.FC<Props> = ({
@@ -16,10 +24,29 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
   workTypeName,
   template,
   onChange,
+  checklistVariants,
+  activeVariantId,
+  onChangeVariant,
 }) => {
   const [items, setItems] = React.useState<ChecklistTemplateItem[]>(template);
   const inputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
   const newItemRef = React.useRef<HTMLInputElement | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = React.useState(
+    activeVariantId ?? checklistVariants?.[0]?.id ?? ""
+  );
+
+  // Đồng bộ lại khi props activeVariantId hoặc danh sách variant thay đổi
+  React.useEffect(() => {
+    setSelectedVariantId((prev) => {
+      if (activeVariantId && activeVariantId !== prev) {
+        return activeVariantId;
+      }
+      if (!prev && checklistVariants && checklistVariants.length > 0) {
+        return checklistVariants[0].id;
+      }
+      return prev;
+    });
+  }, [activeVariantId, checklistVariants]);
 
   React.useEffect(() => {
     setItems(template);
@@ -64,33 +91,82 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
   return (
     <div className="fixed inset-0 z-[999] flex justify-end bg-black/30">
       <div className="w-[400px] max-w-full h-full bg-white shadow-2xl border-l border-emerald-50 animate-slide-left flex flex-col">
-        {/* Header */}
-        <div className="px-4 pt-4 pb-3 border-b border-emerald-50">
-          <button
-            onClick={onClose}
-            className="w-full rounded-xl bg-gray-50 text-[12px] text-gray-500 hover:text-emerald-600 hover:bg-gray-100 py-1.5 mb-3 transition"
-          >
-            ← Trở lại
-          </button>
+        
+        {/* Header – Linear Style */}
+        <div
+          className="
+            px-4 py-4 
+            bg-gradient-to-r from-white via-emerald-50/20 to-white
+            shadow-lg border-l border-gray-200
+          "
+        >
+          {/* Top row: Title + Close */}
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Checklist Mặc Định</h2>
+              <p className="text-xs text-gray-500 mt-1">
+                Áp dụng cho loại việc:{" "}
+                <span className="font-medium text-gray-700">{workTypeName}</span>
+              </p>
+            </div>
 
-          <div className="text-sm font-semibold text-gray-900">
-            Checklist mặc định – {workTypeName}
+            <button
+              onClick={onClose}
+              className="
+                rounded-full px-2 py-1 text-[11px]
+                bg-gray-50 hover:bg-gray-100
+                text-gray-500 hover:text-emerald-600
+                border border-gray-200
+                transition
+              "
+            >
+              ✕
+            </button>
           </div>
-          <p className="mt-1 text-[11px] text-gray-500">
-            Các mục bên dưới sẽ tự động áp dụng khi giao task mới cho loại việc này.
-          </p>
+
+          {/* Dropdown – Dạng checklist */}
+          {checklistVariants && checklistVariants.length > 0 && (
+            <div className="mt-4">
+              <label className="text-[11px] font-medium text-gray-600 uppercase tracking-wide">
+                Dạng checklist
+              </label>
+
+              <div className="mt-1">
+                <Select
+                  value={selectedVariantId}
+                  onValueChange={(newId) => {
+                    setSelectedVariantId(newId);
+                    onChangeVariant?.(newId);
+                  }}
+                >
+                  <SelectTrigger className="w-full h-8 text-xs rounded-md border border-gray-300 bg-white px-2 shadow-sm focus:border-emerald-500 focus:ring-emerald-500">
+                    <SelectValue placeholder="Chọn dạng checklist..." />
+                  </SelectTrigger>
+
+                  <SelectContent position="popper" className="z-[9999]">
+                    {checklistVariants.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>
+                        {v.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-auto px-4 pt-3 pb-2">
+        <div className="flex-1 overflow-auto px-4 pt-5 pb-2">
           <div className="space-y-2">
             {items.map((it) => (
               <div
                 key={it.id}
                 className="
+                  group
                   flex items-center justify-between
-                  rounded-lg border border-emerald-100 bg-emerald-50/40
-                  hover:bg-emerald-50 transition-colors
+                  rounded-md border border-gray-200 bg-white
+                  hover:bg-emerald-50/40 transition-colors
                   px-3 py-1.5
                   relative z-0 overflow-visible
                   min-w-full
@@ -136,23 +212,21 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
 
                 <div className="relative group shrink-0">
                   <button
-                    type="button"
                     onClick={() => remove(it.id)}
                     className="
-                      w-7 h-7 flex items-center justify-center
-                      rounded-full border border-rose-300
-                      bg-white text-rose-700
-                      hover:bg-rose-50 hover:border-rose-400
-                      transition-colors
-                      text-[11px] font-semibold
                       shrink-0
+                      opacity-0 group-hover:opacity-100
+                      text-gray-400 hover:text-rose-500
+                      p-1 rounded-full
+                      transition
                     "
+                    title="Xoá mục"
                   >
-                    ✕
+                    <Trash className="h-3 w-3" />
                   </button>
 
                   {/* Tooltip */}
-                  <div
+                  {/* <div
                     className="
                       absolute right-0 top-full mt-1
                       px-2 py-0.5
@@ -166,7 +240,7 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
                     "
                   >
                     Xoá mục
-                  </div>
+                  </div> */}
                 </div>
 
               </div>
@@ -183,7 +257,7 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
 
 
         {/* Footer */}
-        <div className="mt-auto px-4 pt-3 pb-3 border-t border-emerald-50 bg-white/95 flex items-center justify-between">
+        <div className="mt-auto px-4 pt-3 pb-3 border-t border-gray-200 bg-white/95 flex items-center justify-between">
           <span className="text-[11px] text-gray-400">
             {items.length} mục trong checklist mặc định
           </span>

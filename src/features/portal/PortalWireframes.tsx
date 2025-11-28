@@ -6,7 +6,7 @@ import { TeamMonitorView } from './lead/TeamMonitorView';
 import { MainSidebar } from "./components/MainSidebar";
 import { ViewModeSwitcher } from "@/features/portal/components/ViewModeSwitcher";
 import { mockGroups as sidebarGroups, mockContacts } from "@/data/mockSidebar";
-import { mockGroup_VH_Kho, mockGroup_VH_TaiXe, mockDepartments } from "@/data/mockOrg";
+import { mockGroup_VH_Kho, mockGroup_VH_TaiXe, mockDepartments, mockChecklistTemplatesByVariant } from "@/data/mockOrg";
 import { mockTasks } from "@/data/mockTasks";
 import { mockMessagesByWorkType } from "@/data/mockMessages";
 import { DepartmentTransferSheet } from '@/components/sheet/DepartmentTransferSheet';
@@ -84,6 +84,16 @@ export default function PortalWireframes() {
   const [selectedWorkTypeId, setSelectedWorkTypeId] = React.useState<string>(
     selectedGroup?.defaultWorkTypeId ?? selectedGroup?.workTypes?.[0]?.id ?? "wt_default"
   );
+
+  // Danh sách "dạng checklist" (sub work type) của work type được chọn
+  const checklistVariants =
+    selectedGroup?.workTypes?.find((w) => w.id === selectedWorkTypeId)
+      ?.checklistVariants ?? [];
+
+  const defaultChecklistVariantId =
+    checklistVariants.find((v) => v.isDefault)?.id ||
+    checklistVariants[0]?.id ||
+    undefined;
 
   /// --- Import mock message data ---
   // Lấy ra workTypeKey tương ứng từ id (mapping thủ công hoặc từ group)
@@ -164,8 +174,8 @@ export default function PortalWireframes() {
     id: "grp_vh_kho", // mặc định mở nhóm “Vận hành - Kho Hàng”
   });
 
-  // Checklist Template theo WorkType
-  const [checklistTemplates, setChecklistTemplates] = React.useState<ChecklistTemplateMap>({});
+  // Checklist Template theo WorkType + Variant
+  const [checklistTemplates, setChecklistTemplates] = React.useState<ChecklistTemplateMap>(mockChecklistTemplatesByVariant);
 
   const [tasks, setTasks] = React.useState(() => structuredClone(mockTasks));
 
@@ -707,12 +717,35 @@ export default function PortalWireframes() {
     title,
     sourceMessageId,
     assigneeId,
+    checklistVariantId,
+    checklistVariantName,
   }: {
     title: string;
     sourceMessageId?: string;
     assigneeId?: string;
+    checklistVariantId?: string;
+    checklistVariantName?: string;
   }): void => {        
         
+    // Xác định WorkType & variant (ưu tiên variant được chọn từ AssignTaskSheet)
+    const wt = selectedGroup?.workTypes?.find((w) => w.id === selectedWorkTypeId);
+
+    let variantId = checklistVariantId;
+    let variantName = checklistVariantName;
+
+    if (!variantId) {
+      const defaultVariant =
+        wt?.checklistVariants?.find((v) => v.isDefault) ?? wt?.checklistVariants?.[0];
+
+      variantId = defaultVariant?.id;
+      variantName = defaultVariant?.name;
+    }
+
+    const tplItems =
+      variantId && checklistTemplates[selectedWorkTypeId]?.[variantId]
+        ? checklistTemplates[selectedWorkTypeId][variantId]
+        : [];
+
     const newTask: Task = {
       id: "task_" + Date.now(),
       title,
@@ -720,11 +753,13 @@ export default function PortalWireframes() {
       groupId: selectedGroup?.id ?? "",
       sourceMessageId: sourceMessageId ?? "",
       assigneeId: assigneeId ?? currentUserId, // nếu không có thì giao cho currentUser
-      assignedById: currentUser, // use currentUser (string) which exists in this scope
+      assignedById: currentUser,
       workTypeId: selectedWorkTypeId,
-      workTypeName: selectedGroup?.workTypes?.find(w => w.id === selectedWorkTypeId)?.name || selectedWorkTypeId,
+      workTypeName: wt?.name,
+      checklistVariantId: variantId,
+      checklistVariantName: variantName,
       status: "todo",
-      checklist: (checklistTemplates[selectedWorkTypeId] ?? []).map(it => ({
+      checklist: tplItems.map((it) => ({
         id: "chk_" + Math.random().toString(36).slice(2),
         label: it.label,
         done: false,
@@ -733,6 +768,7 @@ export default function PortalWireframes() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+
 
     setTasks((prev) => [...prev, newTask]);
     setTab("tasks");
@@ -1008,6 +1044,8 @@ export default function PortalWireframes() {
           message={assignSheet.message}
           info={assignSheet.info}
           members={groupMembers}
+          checklistVariants={checklistVariants}
+          defaultChecklistVariantId={defaultChecklistVariantId}
           onClose={() => setAssignSheet({ open: false })}
           onCreateTask={handleCreateTask}
         />

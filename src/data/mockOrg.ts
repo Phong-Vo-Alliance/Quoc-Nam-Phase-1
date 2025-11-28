@@ -4,7 +4,9 @@ import type {
   Department,
   GroupChat,
   GroupMember,
-  WorkType
+  WorkType,
+  ChecklistTemplateMap,
+  ChecklistTemplateItem,
 } from "@/features/portal/types";
 
 const iso = (d = new Date()) => d.toISOString();
@@ -101,6 +103,22 @@ export const wtNhanHang: WorkType = {
   name: "Nhận hàng",
   icon: "PackageCheck",
   color: "#22C55E",
+
+  checklistVariants: [
+      {
+        id: "nhanHang_kiemDem",
+        name: "Kiểm đếm",
+        isDefault: true,
+      },
+      {
+        id: "nhanHang_luuTru",
+        name: "Lưu trữ",
+      },
+      {
+        id: "nhanHang_thanhToan",
+        name: "Thanh toán",
+      },
+    ],
 };
 export const wtDoiTra: WorkType = {
   id: "wt_doi_tra",
@@ -108,6 +126,22 @@ export const wtDoiTra: WorkType = {
   name: "Đổi Trả",
   icon: "Undo2",
   color: "#0EA5E9",
+
+  checklistVariants: [
+      {
+        id: "doiTra_xacNhan",
+        name: "Xác nhận",
+        isDefault: true,
+      },
+      {
+        id: "doiTra_xuLy",
+        name: "Xử lý",
+      },
+      {
+        id: "doiTra_thanhToan",
+        name: "Thanh toán",
+      },
+    ],
 };
 export const wtPhePham: WorkType = {
   id: "wt_phe_pham",
@@ -122,6 +156,22 @@ export const wtCanHang: WorkType = {
   name: "Cân Hàng",
   icon: "Scale",
   color: "#A78BFA",
+
+  checklistVariants: [
+      {
+        id: "canhang_xacNhan",
+        name: "Xác nhận",
+        isDefault: true,
+      },
+      {
+        id: "canhang_nhapCan",
+        name: "Nhập cân",
+      },
+      {
+        id: "canhang_luuTru",
+        name: "Lưu trữ",
+      },
+    ],
 };
 
 export const wtDonBocHang: WorkType = {
@@ -145,6 +195,45 @@ export const mockWorkTypesForGroup: WorkType[] = [
   wtPhePham,
   wtCanHang,
 ];
+
+export const mockChecklistTemplatesByVariant: ChecklistTemplateMap = {
+  // Nhận hàng
+  wt_nhan_hang: {
+    nhanHang_kiemDem: [
+      { id: "tpl_nh_kd_1", label: "Kiểm đếm số lượng thực tế" },
+      { id: "tpl_nh_kd_2", label: "Đối chiếu với phiếu nhập" },
+    ],
+    nhanHang_luuTru: [
+      { id: "tpl_nh_lt_1", label: "Chuyển hàng vào khu vực lưu trữ" },
+      { id: "tpl_nh_lt_2", label: "Cập nhật vị trí trên hệ thống" },
+    ],
+    nhanHang_thanhToan: [
+      { id: "tpl_nh_tt_1", label: "Chuẩn bị chứng từ thanh toán" },
+      { id: "tpl_nh_tt_2", label: "Xác nhận công nợ với kế toán" },
+    ],
+  },
+
+  // Đổi trả
+  wt_doi_tra: {
+    doiTra_xacNhan: [
+      { id: "tpl_dt_xn_1", label: "Xác nhận lý do đổi trả" },
+      { id: "tpl_dt_xn_2", label: "Kiểm tra tình trạng hàng hóa" },
+    ],
+    doiTra_xuLy: [
+      { id: "tpl_dt_xl_1", label: "Tạo phiếu đổi / hoàn" },
+    ],
+    doiTra_thanhToan: [
+      { id: "tpl_dt_tt_1", label: "Hoàn tiền cho khách / NCC" },
+    ],
+  },
+
+  // Các loại việc khác tạm thời để trống, có thể bổ sung sau
+  wt_phe_pham: {},
+  wt_can_hang: {},
+  wt_don_boc_hang: {},
+  wt_lich_boc_hang: {},
+};
+
 
 /* ===================== GroupChat ===================== */
 const members: GroupMember[] = [

@@ -49,6 +49,8 @@ export interface Task {
   groupId: ID;
   workTypeId: ID;
   workTypeName?: string;
+  checklistVariantId?: string;
+  checklistVariantName?: string;
   progressText?: string;
 
   sourceMessageId: ID;       // message gốc dùng để tạo task
@@ -206,6 +208,13 @@ export interface Department {
   createdAt: ISODate;
 }
 
+export interface ChecklistVariant {
+  id: string;            // ví dụ: "nhanHang_kiemDem"
+  name: string;          // ví dụ: "Kiểm đếm"
+  description?: string;  // mô tả thêm nếu cần
+  isDefault?: boolean;   // variant mặc định cho workType
+}
+
 // ===== Group & Work Types =====
 export interface WorkType {
   id: ID;
@@ -213,6 +222,9 @@ export interface WorkType {
   name: string;        // "Nhận hàng", "Đổi trả", ...
   icon?: string;       // lucide icon name
   color?: string;      // brand subcolor cho chip/badge
+
+  /** Danh sách các dạng checklist con (Kiểm đếm / Lưu trữ / Thanh toán / ...) */
+  checklistVariants?: ChecklistVariant[];
 }
 
 export interface GroupMember {
@@ -308,5 +320,8 @@ export type ChecklistTemplateItem = {
 
 export type ChecklistTemplateMap = Record<
   string,               // workTypeId
-  ChecklistTemplateItem[]
+  Record<
+    string,             // checklistVariantId
+    ChecklistTemplateItem[]
+  >
 >;

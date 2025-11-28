@@ -13,11 +13,21 @@ interface Props {
 
   members: Array<{ id: string; name: string }>;
 
+  selectedWorkTypeId?: string;
+
+  // danh sách dạng checklist của work type (nếu có)
+  checklistVariants?: { id: string; name: string; isDefault?: boolean }[];
+
+  // id dạng checklist mặc định (nếu có)
+  defaultChecklistVariantId?: string;
+
   onClose: () => void;
   onCreateTask: (payload: {
     title: string;
     sourceMessageId: string;
     assigneeId: string;
+    checklistVariantId?: string;
+    checklistVariantName?: string;
   }) => void;
 }
 
@@ -27,33 +37,57 @@ export function AssignTaskSheet({
   message,
   info,
   members,
+  selectedWorkTypeId,
+  checklistVariants,
+  defaultChecklistVariantId,
   onClose,
   onCreateTask,
 }: Props) {
   const [assignee, setAssignee] = React.useState("");
   const [title, setTitle] = React.useState("");
 
+  // dạng checklist được chọn
+  const [checklistVariantId, setChecklistVariantId] = React.useState<string>("");
+
   React.useEffect(() => {
     if (!open) return;
+
     if (source === "message" && message) {
       setTitle(message.content || "");
     } else if (source === "receivedInfo" && info) {
-      setTitle(info.title || "");
+      setTitle(info.title);
     }
-    setAssignee("");
-  }, [open, source, message, info]);
+
+    setAssignee(members[0]?.id ?? "");
+
+    // reset dạng checklist theo default hoặc phần tử đầu
+    if (checklistVariants && checklistVariants.length > 0) {
+      const defaultId =
+        defaultChecklistVariantId ??
+        checklistVariants.find((v) => v.isDefault)?.id ??
+        checklistVariants[0]?.id ??
+        "";
+
+      setChecklistVariantId(defaultId);
+    } else {
+      setChecklistVariantId("");
+    }
+  }, [open, source, message, info, members, checklistVariants, defaultChecklistVariantId]);
+
 
   const handleSubmit = () => {
     if (!assignee || !title.trim()) return;
-    const sourceMessageId =
-      source === "message"
-        ? message!.id
-        : info!.messageId;
+
+    const trimmedTitle = title.trim();
+    const variant = checklistVariantId;
+    const selectedVariant = checklistVariants?.find((v) => v.id === variant);
 
     onCreateTask({
-      title,
-      sourceMessageId,
+      title: trimmedTitle,
+      sourceMessageId: (source === "message" ? message?.id : info?.messageId) || "",
       assigneeId: assignee,
+      checklistVariantId: variant || undefined,
+      checklistVariantName: selectedVariant?.name,
     });
 
     onClose();
@@ -62,13 +96,18 @@ export function AssignTaskSheet({
   return (
     <Sheet open={open} onOpenChange={onClose}>
       <SheetContent side="right" className="w-[380px]">
-        <SheetHeader>
-          <SheetTitle>Giao công việc</SheetTitle>
+        <SheetHeader className="pb-3 border-b border-gray-100">
+          <SheetTitle className="text-base font-semibold text-gray-900">
+            Giao Công Việc
+          </SheetTitle>
+          <p className="text-[12px] text-gray-500 mt-0.5">
+            Tạo công việc mới cho thành viên trong nhóm
+          </p>
         </SheetHeader>
 
         <div className="mt-4 space-y-4">
           <div>
-            <Label>Tên công việc</Label>
+            <Label className="text-xs font-medium text-gray-700">Tên công việc</Label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -77,7 +116,7 @@ export function AssignTaskSheet({
           </div>
 
           <div>
-            <Label>Giao cho</Label>
+            <Label className="text-xs font-medium text-gray-700">Giao cho</Label>
             <Select value={assignee} onValueChange={setAssignee}>
               <SelectTrigger className="mt-1">
                 <SelectValue placeholder="Chọn nhân viên..." />
@@ -91,6 +130,31 @@ export function AssignTaskSheet({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Dạng checklist (sub work type) */}
+          {checklistVariants && checklistVariants.length > 0 && (
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-gray-700">
+                Dạng checklist
+              </Label>
+              <Select
+                value={checklistVariantId}
+                onValueChange={setChecklistVariantId}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Chọn dạng checklist..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {checklistVariants.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>              
+            </div>
+          )}
+
         </div>
 
         <SheetFooter className="mt-6">

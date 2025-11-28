@@ -1,7 +1,7 @@
 import React from "react";
 import { RightAccordion } from "../components";
 import { SegmentedTabs } from "../components/SegmentedTabs";
-import type { Task, ReceivedInfo, ChecklistItem, ChecklistTemplateMap, ChecklistTemplateItem, TaskLogMessage } from "../types";
+import type { Task, ReceivedInfo, ChecklistItem, ChecklistTemplateMap, ChecklistTemplateItem, TaskLogMessage, ChecklistVariant } from "../types";
 import {ChecklistTemplatePanel} from "../components/ChecklistTemplatePanel";
 import {TaskChecklistEditor, TaskChecklistViewer} from "../components/TaskChecklist";
 import {ChecklistTemplateSlideOver} from "../components/ChecklistTemplateSlideOver";
@@ -87,9 +87,9 @@ const StatusBadge: React.FC<{ s: Task["status"] }> = ({ s }) => {
     <span
       className={`
         inline-flex items-center
-        rounded-lg px-2 py-0.5 text-[10px] font-semibold
-        border shadow-sm
-        bg-white/90
+        rounded-md px-2 py-0.5 text-[10px] font-medium
+        border border-gray-200 bg-gray-50 text-gray-600
+        shadow-sm
         ${x.cls}
       `}
     >
@@ -125,6 +125,10 @@ const TaskCard: React.FC<{
     total > 0 ? Math.round((doneCount / total) * 100) : 0;
 
   const workTypeLabel = t.workTypeName ?? t.workTypeId;
+  const displayWorkTypeLabel = t.checklistVariantName
+    ? `${workTypeLabel} · ${t.checklistVariantName}`
+    : workTypeLabel;
+
   const progressText =
     t.progressText ??
     (total ? `${doneCount}/${total} mục` : "Không có checklist");
@@ -188,19 +192,19 @@ const TaskCard: React.FC<{
 
       <div
         className="
-        relative
-        rounded-2xl
-        bg-white/80
-        backdrop-blur
-        border border-emerald-100
-        p-4
-        shadow-[0_8px_20px_rgba(15,23,42,0.10)]
-        hover:shadow-[0_14px_32px_rgba(15,23,42,0.16)]
-        transition-all
-        duration-200
-        hover:-translate-y-[1px]
-      "
+          relative
+          rounded-xl
+          bg-white/80
+          border border-emerald-100
+          p-4
+          shadow-[0_2px_3px_rgba(15,23,42,0.10)]
+          hover:shadow-[0_6px_8px_rgba(15,23,42,0.16)]
+          transition-all
+          duration-200
+          hover:-translate-y-[1px]
+        "
       >
+
         {/* Floating status badge góc phải trên */}
         <div className="absolute -top-3 right-2">
           <StatusBadge s={t.status} />
@@ -215,12 +219,27 @@ const TaskCard: React.FC<{
 
             {/* Meta: loại việc, progress, assignee */}
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-gray-500">
-              <span>
-                Loại việc:{" "}
-                <span className="font-medium text-gray-700">
-                  {workTypeLabel}
-                </span>
+              <span className="inline-flex items-center gap-1">
+                <span>Loại việc:</span>
+
+                {/* WorkType name */}
+                <span className="font-medium text-gray-700">{workTypeLabel}</span>
+
+                {/* CHIP variant */}
+                {t.checklistVariantName && (
+                  <span
+                    className="
+                      inline-flex items-center px-1.5 py-0.5
+                      rounded-md text-[10px] font-semibold
+                      bg-emerald-50 text-emerald-700 border border-emerald-200
+                      shadow-sm
+                    "
+                  >
+                    {t.checklistVariantName}
+                  </span>
+                )}
               </span>
+
 
               {total > 0 && (
                 <>
@@ -260,15 +279,13 @@ const TaskCard: React.FC<{
 
             {/* Progress bar */}
             {total > 0 && (
-              <div className="mt-2 h-1.5 w-full rounded-full bg-gray-200 overflow-hidden">
+              <div className="mt-2 h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
                 <div
-                  className={`
-                    h-full rounded-full transition-all duration-300
-                    ${progress >= 60
-                      ? "bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-600"
-                      : "bg-emerald-500"
-                    }
-                `}
+                  className="
+                    h-full rounded-full
+                    bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-600
+                    transition-all duration-300
+                  "
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -328,7 +345,7 @@ const TaskCard: React.FC<{
                     {t.checklist.map((c) => (
                       <li
                         key={c.id}
-                        className="group flex items-center gap-2 text-[12px] leading-snug rounded-md px-2 py-1 hover:bg-emerald-50 transition-all cursor-default relative z-0"
+                        className="group flex items-center gap-2 text-[12px] leading-snug rounded-md px-2 py-1 hover:bg-gray-50 transition-all"
                       >
                         {/* Checkbox */}
                         {c.done ? (
@@ -340,7 +357,7 @@ const TaskCard: React.FC<{
                             type="button"
                             className=" checklist-btn
                             h-4 w-4 shrink-0 rounded-full
-                            border-[1.5px] border-emerald-400
+                            border-[1px] border-emerald-300
                             bg-white
                             hover:shadow-[0_0_4px_rgba(16,185,129,0.35)]
                             transition flex items-center justify-center
@@ -592,6 +609,7 @@ export const RightPanel: React.FC<{
   applyTemplateToTasks?: (workTypeId: string, template: ChecklistTemplateItem[]) => void;
   taskLogs?: Record<string, TaskLogMessage[]>;
   onOpenTaskLog?: (taskId: string) => void;
+  checklistVariants?: ChecklistVariant[];
 }> = ({
   tab,
   setTab,
@@ -616,6 +634,7 @@ export const RightPanel: React.FC<{
   applyTemplateToTasks,
   taskLogs,
   onOpenTaskLog,
+  checklistVariants,
 }) => {
   // Helper: kiểm tra task có phải của ngày hôm nay không
   const isToday = (iso?: string) => {
@@ -646,6 +665,22 @@ export const RightPanel: React.FC<{
   const isTasksTab = tab === "order" || tab === "tasks";
  
   const [templateOpen, setTemplateOpen] = React.useState(false);
+
+    // Variant hiện tại đang chỉnh trong "Checklist mặc định"
+  const [templateVariantId, setTemplateVariantId] = React.useState<string | undefined>(undefined);
+
+  React.useEffect(() => {
+    if (checklistVariants && checklistVariants.length > 0) {
+      const def = checklistVariants.find((v) => v.isDefault) ?? checklistVariants[0];
+      // Nếu state hiện tại không hợp lệ, reset về default
+      setTemplateVariantId((prev) =>
+        prev && checklistVariants.some((v) => v.id === prev) ? prev : def?.id
+      );
+    } else {
+      setTemplateVariantId(undefined);
+    }
+  }, [checklistVariants, selectedWorkTypeId]);
+
 
   // ====== Files state - mock data (demo) ======  
   const initialMediaItems: FileNode[] = [
@@ -725,14 +760,16 @@ export const RightPanel: React.FC<{
 
   // Checklist template panel
   const [showTemplate, setShowTemplate] = React.useState(false);
-  
-  // const workTypeTemplate =
-  // selectedWorkTypeId && checklistTemplates[selectedWorkTypeId]
-  //   ? checklistTemplates[selectedWorkTypeId]
-  //   : [];
-  const workTypeKey = selectedWorkTypeId ?? "__default__";
 
-  const workTypeTemplate = checklistTemplates[workTypeKey] ?? [];
+  const workTypeKey = selectedWorkTypeId ?? "__default__";
+  const activeVariantId =
+    templateVariantId ??
+    checklistVariants?.find((v) => v.isDefault)?.id ??
+    checklistVariants?.[0]?.id ??
+    "__default__";
+
+  const workTypeTemplate =
+    checklistTemplates?.[workTypeKey]?.[activeVariantId] ?? [];
 
   return (
     <aside className="bg-white shadow-sm flex flex-col min-h-0">
@@ -1152,14 +1189,21 @@ export const RightPanel: React.FC<{
           onClose={() => setTemplateOpen(false)}
           workTypeName={workTypeName}
           template={workTypeTemplate}
+          checklistVariants={checklistVariants}
+          activeVariantId={activeVariantId !== "__default__" ? activeVariantId : undefined}
+          onChangeVariant={(variantId) => {
+            setTemplateVariantId(variantId);
+          }}
           onChange={(next) => {
             setChecklistTemplates?.((prev) => ({
               ...prev,
-              [workTypeKey]: next,
+              [workTypeKey]: {
+                ...(prev[workTypeKey] ?? {}),
+                [activeVariantId]: next,
+              },
             }));
           }}
         />
-
       </div>      
     </aside>
   );
