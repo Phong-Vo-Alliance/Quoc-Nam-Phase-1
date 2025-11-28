@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ToastContainer, CloseNoteModal, FilePreviewModal } from './components';
-import type { LeadThread, Task, TaskStatus, ToastKind, ToastMsg, FileAttachment, PinnedMessage, GroupChat, Message, ReceivedInfo, WorkType, ChecklistItem } from './types';
+import type { LeadThread, Task, TaskStatus, ToastKind, ToastMsg, FileAttachment, PinnedMessage, GroupChat, Message, ReceivedInfo, WorkType, ChecklistItem, TaskLogMessage } from './types';
 import { WorkspaceView } from './workspace/WorkspaceView';
 import { TeamMonitorView } from './lead/TeamMonitorView';
 import { MainSidebar } from "./components/MainSidebar";
@@ -13,7 +13,7 @@ import { DepartmentTransferSheet } from '@/components/sheet/DepartmentTransferSh
 import { AssignTaskSheet } from '@/components/sheet/AssignTaskSheet';
 import { GroupTransferSheet } from "@/components/sheet/GroupTransferSheet";
 import type { ChecklistTemplateMap, ChecklistTemplateItem } from './types';
-
+import { TaskLogThreadSheet } from "./workspace/TaskLogThreadSheet";
 
 export default function PortalWireframes() {
   // ---------- shared UI state ----------
@@ -138,6 +138,13 @@ export default function PortalWireframes() {
 
   // --- Toast store ---
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
+  // --- Task log (nhật ký công việc) ---
+  const [taskLogSheet, setTaskLogSheet] = useState<{
+    open: boolean;
+    taskId?: string;
+  }>({ open: false });
+
+  const [taskLogs, setTaskLogs] = useState<Record<string, TaskLogMessage[]>>({});
   const pushToast = (msg: string, kind: ToastKind = 'info') => {
     const id = Math.random().toString(36).slice(2);
     setToasts((t) => [...t, { id, kind, msg }]);
@@ -715,6 +722,7 @@ export default function PortalWireframes() {
       assigneeId: assigneeId ?? currentUserId, // nếu không có thì giao cho currentUser
       assignedById: currentUser, // use currentUser (string) which exists in this scope
       workTypeId: selectedWorkTypeId,
+      workTypeName: selectedGroup?.workTypes?.find(w => w.id === selectedWorkTypeId)?.name || selectedWorkTypeId,
       status: "todo",
       checklist: (checklistTemplates[selectedWorkTypeId] ?? []).map(it => ({
         id: "chk_" + Math.random().toString(36).slice(2),
@@ -727,6 +735,24 @@ export default function PortalWireframes() {
     };
 
     setTasks((prev) => [...prev, newTask]);
+    setTab("tasks");
+    setShowRight(true);
+
+    setTaskLogs((prev) => ({
+      ...prev,
+      [newTask.id]: [],
+    }));
+
+    // Liên kết task mới với message gốc (nếu có)    
+    if (sourceMessageId) {      
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === sourceMessageId
+            ? { ...m, taskId: newTask.id }
+            : m
+        )
+      );
+    }
 
     // Nếu assign từ ReceivedInfo → đổi trạng thái
     if (assignSheet.source === "receivedInfo" && assignSheet.info) {
@@ -767,6 +793,75 @@ export default function PortalWireframes() {
 
     pushToast("Đã chuyển thông tin sang nhóm mới.", "success");
   };
+
+    const handleSendTaskLogMessage = ({
+    content,
+    replyToId,
+  }: {
+    content: string;
+    replyToId?: string;
+  }) => {
+    if (!taskLogSheet.taskId) return;
+    const taskId = taskLogSheet.taskId;
+    const now = new Date();
+
+    const existing = taskLogs[taskId] ?? [];
+
+    let replyTo: TaskLogMessage["replyTo"] | undefined;
+    if (replyToId) {
+      const original = existing.find(m => m.id === replyToId);
+      if (original) {
+        const type =
+          original.type === "text" || original.type === "file" || original.type === "image"
+            ? original.type
+            : "text";
+        replyTo = {
+          id: original.id,
+          type,
+          sender: original.sender,
+          content: original.content,
+          // nếu sau này hỗ trợ ảnh/file trong log thì map thêm tại đây
+          fileInfo: original.fileInfo,
+        };
+      }
+    }
+
+    const newMsg: TaskLogMessage = {
+      id: "tlog_" + now.getTime().toString(36) + "_" + Math.random().toString(36).slice(2, 6),
+      taskId,
+      senderId: currentUserId,
+      sender: currentUser,
+      type: "text",
+      content,
+      time: now.toISOString(),
+      createdAt: now.toISOString(),
+      isMine: true,
+      files: [],
+      fileInfo: undefined,
+      replyTo,
+    };
+
+    setTaskLogs(prev => ({
+      ...prev,
+      [taskId]: [...(prev[taskId] ?? []), newMsg],
+    }));
+  };
+
+  // --- Task log sheet: task + message gốc + danh sách log ---
+  const activeTaskLogTask = React.useMemo(
+    () => (taskLogSheet.taskId ? tasks.find(t => t.id === taskLogSheet.taskId) : undefined),
+    [tasks, taskLogSheet.taskId]
+  );
+
+  const activeTaskLogSourceMessage = React.useMemo(() => {
+    if (!activeTaskLogTask?.sourceMessageId) return undefined;
+    return messages.find(m => m.id === activeTaskLogTask.sourceMessageId);
+  }, [messages, activeTaskLogTask?.sourceMessageId]);
+
+  const activeTaskLogMessages: TaskLogMessage[] =
+    taskLogSheet.taskId && taskLogs[taskLogSheet.taskId]
+      ? taskLogs[taskLogSheet.taskId]
+      : [];
 
   return (
     <div className="w-screen h-screen flex overflow-hidden bg-gray-50 text-gray-800">
@@ -879,6 +974,11 @@ export default function PortalWireframes() {
             onAssignInfo={onAssignInfo}
             onAssignFromMessage={onAssignFromMessage}
             openTransferSheet={openTransferSheet}
+
+            onOpenTaskLog={(taskId) => {
+              setTaskLogSheet({ open: true, taskId });
+            }}
+            taskLogs={taskLogs}
           />          
         ) : (
           <TeamMonitorView
@@ -922,6 +1022,18 @@ export default function PortalWireframes() {
           onClose={() => setGroupTransferSheet({ open: false })}
           onConfirm={handleGroupTransferConfirm}
         />
+
+        <TaskLogThreadSheet
+          open={taskLogSheet.open}
+          onClose={() => setTaskLogSheet({ open: false })}
+          task={activeTaskLogTask}
+          sourceMessage={activeTaskLogSourceMessage}
+          messages={activeTaskLogMessages}
+          currentUserId={currentUserId}
+          members={groupMembers}
+          onSend={handleSendTaskLogMessage}
+        />
+
 
         {/* Toasts */}
         <ToastContainer toasts={toasts} onClose={removeToast} />

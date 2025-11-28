@@ -149,6 +149,42 @@ export interface Message {
   taskId?: ID;
 }
 
+/**
+ * Message trong thread Nhật ký công việc của Task
+ * 1 Task <-> 1 thread, nên taskId cũng là threadId
+ */
+export interface TaskLogMessage {
+  /** Mã định danh message trong thread */
+  id: string;
+
+  /** Task / thread mà message này thuộc về */
+  taskId: ID;
+
+  /** Người gửi */
+  senderId: ID;
+  sender: string;
+
+  /** Kiểu tin nhắn (text / image / file / system) */
+  type: "text" | "image" | "file" | "system";
+
+  /** Nội dung chính (text hoặc caption) */
+  content?: string;
+
+  /** Thời gian gửi (ISO string, dùng cho hiển thị) */
+  time: string;
+  createdAt: ISODate;
+
+  /** Có phải tin của current user không (phục vụ align bên phải) */
+  isMine?: boolean;
+
+  /** File / ảnh đính kèm nếu có */
+  files?: FileAttachment[];
+  fileInfo?: FileAttachment;
+
+  /** Reply tới một message khác trong cùng thread */
+  replyTo?: Message["replyTo"];
+}
+
 /* ---------------- User Types ---------------- */
 export interface User {
   id: ID;

@@ -1,6 +1,6 @@
 import React from "react";
-import type { Message } from "../types";
-import { Eye, Star, StarOff, Reply, Quote, ClipboardPlus, Clock, Inbox, Paperclip } from "lucide-react";
+import type { Message, TaskLogMessage } from "../types";
+import { Eye, Star, StarOff, Reply, Quote, ClipboardPlus, Clock, Inbox, Paperclip, MessageSquarePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** Optional meta (giúp xác định nhóm/bo góc như Google Chat) */
@@ -23,6 +23,10 @@ interface MessageBubbleProps {
   receivedLabel?: string;
   onAssignFromMessage?: (msg: Message) => void;
   viewMode?: "lead" | "staff";
+  onOpenTaskLog?: (taskId: string) => void;
+  taskLogs?: Record<string, TaskLogMessage[]>;
+  currentUserId?: string;
+  disableExtraActions?: boolean;
 }
 
 /* Utils nhỏ để so sánh thời gian gần nhau */
@@ -62,6 +66,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   receivedLabel,
   onAssignFromMessage,
   viewMode,
+  onOpenTaskLog,
+  taskLogs = {},
+  currentUserId,
+  disableExtraActions = false,
 }) => {
   // System line
   if (data.type === "system") {
@@ -75,7 +83,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     );
   }
 
-  // Xác định grouping như Google Chat
+  // Xác định vị trí trong nhóm
   const isSameAsPrev =
     !!prev &&
     prev.isMine === data.isMine &&
@@ -154,7 +162,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             </span>
           </div>
         )}
-      </div>
+      </div>      
+
     );
   };
 
@@ -325,7 +334,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     return out;
   };
 
-
   const TextBubble = () => (
     <div
       className={cn(
@@ -350,6 +358,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   };
 
   return (
+    <>
     <div
       className={cn(
         // khoảng cách giữa các tin: rất sát như Google Chat
@@ -412,14 +421,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
         {isReceived && (
           <div
-    className={cn(
-      "absolute -bottom-0.5 right-0 w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md",
-      data.isMine ? "translate-x-2" : "-translate-x-2 -translate-y-2"
-    )}
-    title={receivedLabel ?? "Đã tiếp nhận"}
-  >
-    <Inbox className="w-3 h-3" />
-  </div>
+            className={cn(
+              "absolute -bottom-0.5 right-0 w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md",
+              data.isMine ? "translate-x-2" : "-translate-x-2 -translate-y-2"
+            )}
+            title={receivedLabel ?? "Đã tiếp nhận"}
+          >
+            <Inbox className="w-3 h-3" />
+          </div>
         )}
         
         {/* Actions group – floating card style */}
@@ -436,25 +445,40 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           >
             <Reply size={14} />
           </button>
-          <button
-            className={cn(
-              "p-1.5 transition",
-              data.isPinned
-                ? "text-brand-600 hover:text-rose-500"
-                : "text-gray-500 hover:text-brand-600"
-            )}
-            onClick={() => onPin?.(data)}
-            title={data.isPinned ? "Bỏ đánh dấu tin nhắn" : "Đánh dấu tin nhắn"}
-          >
-            {data.isPinned ? <StarOff size={14} /> : <Star size={14} />}
-          </button>
-          <button
-            title="Giao Task"
-            className="p-1 hover:bg-brand-50 rounded"
-            onClick={() => onAssignFromMessage?.(data)}
-          >
-            <ClipboardPlus className="w-4 h-4 text-brand-600" />
-          </button>
+
+          {!disableExtraActions && (
+              <button
+                className={cn(
+                  "p-1.5 transition",
+                  data.isPinned
+                    ? "text-brand-600 hover:text-rose-500"
+                    : "text-gray-500 hover:text-brand-600"
+                )}
+                onClick={() => onPin?.(data)}
+                title={data.isPinned ? "Bỏ đánh dấu tin nhắn" : "Đánh dấu tin nhắn"}
+              >
+                {data.isPinned ? <StarOff size={14} /> : <Star size={14} />}
+              </button>
+          )}
+          {!data.taskId && (
+            <button
+              title="Giao Task"
+              className="p-1 hover:bg-brand-50 rounded"
+              onClick={() => onAssignFromMessage?.(data)}
+            >
+              <ClipboardPlus className="w-4 h-4 text-brand-600" />
+            </button>
+          )}
+          {data.taskId && onOpenTaskLog && (
+            <button
+              title="Trao đổi về công việc"
+              className="p-1 hover:bg-emerald-50 rounded"
+              onClick={() => onOpenTaskLog(data.taskId!)}
+            >
+              <MessageSquarePlus className="w-4 h-4 text-emerald-600" />
+            </button>
+          )}
+
           {!isReceived && viewMode==="lead" && (           
             <button
               onClick={() => onReceiveInfo?.(data)}
@@ -465,11 +489,40 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             </button>
           )}
           
+          {!disableExtraActions && (
           <button title="Đặt về Pending" className="p-1 hover:bg-amber-50 rounded">
             <Clock className="w-4 h-4 text-amber-500" />
-          </button>          
+          </button>
+          )}
         </div>
       </div>
     </div>
+
+      {data.taskId && taskLogs?.[data.taskId] && (
+        <div
+          className="mt-1 ml-10 cursor-pointer text-[11px] text-gray-500 hover:text-gray-700 flex items-center gap-1"
+          onClick={() => onOpenTaskLog?.(data.taskId!)}
+        >
+          <span className="text-emerald-600">📝 Nhật ký công việc</span>
+
+          <span className="mx-1">·</span>
+
+          <span>{taskLogs[data.taskId].length} phản hồi</span>
+
+          {(() => {
+            const last = taskLogs[data.taskId][taskLogs[data.taskId].length - 1];
+            if (!last) return null;
+            const t = new Date(last.time);
+            const timeStr = t.toLocaleDateString("vi-VN", { weekday: "long" });
+            return (
+              <>
+                <span className="mx-1">·</span>
+                <span>cập nhật cuối: {timeStr}</span>
+              </>
+            );
+          })()}
+        </div>
+      )}
+    </>
   );
 };

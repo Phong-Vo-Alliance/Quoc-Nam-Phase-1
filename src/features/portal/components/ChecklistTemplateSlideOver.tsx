@@ -118,17 +118,17 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
                       if (isLast) {
                         const newId = "tpl_" + Date.now().toString(36);
 
-  setItems((prev) => [
-    ...prev,
-    { id: newId, label: "" },
-  ]);
+                        setItems((prev) => [
+                          ...prev,
+                          { id: newId, label: "" },
+                        ]);
 
-  // báo rằng item mới cần được focus
-  requestAnimationFrame(() => {
-    if (newItemRef.current) {
-      newItemRef.current.focus();
-    }
-  });
+                        // báo rằng item mới cần được focus
+                        requestAnimationFrame(() => {
+                          if (newItemRef.current) {
+                            newItemRef.current.focus();
+                          }
+                        });
                       }
                     }
                   }}

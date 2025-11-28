@@ -86,6 +86,37 @@ export const nhanHangMessages: Message[] = [
     fileInfo: { name: "bien_ban_nhap.pdf", url: "/files/bien_ban_nhap.pdf", type: "pdf" },
     ...makeTime(10, 5),
   },
+  {
+    id: "msg_0001",
+    groupId: "grp_vh_kho",
+    senderId: "u_thanh_truc",
+    sender: "Thanh Trúc",
+    type: "text",
+    content: "Kiểm tra biên bản nhận hàng đợt 2",    
+    ...makeTime(12, 12),
+    taskId: "task_001",
+  },
+  {
+    id: "msg_0020",
+    groupId: "grp_vh_kho",
+    senderId: "u_diem_chi",
+    sender: "Diễm Chi",
+    type: "text",
+    isMine: true,
+    content: "Theo dõi phiếu đổi trả NCC tuần 45",
+    ...makeTime(11, 35),
+    taskId: "task_005",
+  },
+  {
+    id: "msg_0003",
+    groupId: "grp_vh_kho",
+    senderId: "u_thanh_truc",
+    sender: "Thanh Trúc",
+    type: "text",    
+    content: "Cân hàng nhập cuối ngày",
+    ...makeTime(15, 45),
+    taskId: "task_004",
+  },
 ];
 
 export const doiTraMessages: Message[] = [
@@ -145,8 +176,8 @@ export const doiTraMessages: Message[] = [
       { name: "img3.jpg", url: img3, type: "image" },
       { name: "img4.jpg", url: img4, type: "image" },
     ],
-    ...makeTime(9, 5),
-  },
+    ...makeTime(11, 5),
+  },  
 ];
 
 export const lichBocHangMessages: Message[] = [

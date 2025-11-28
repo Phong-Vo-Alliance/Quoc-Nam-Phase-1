@@ -1,7 +1,7 @@
 import React from "react";
 import { RightAccordion } from "../components";
 import { SegmentedTabs } from "../components/SegmentedTabs";
-import type { Task, ReceivedInfo, ChecklistItem, ChecklistTemplateMap, ChecklistTemplateItem } from "../types";
+import type { Task, ReceivedInfo, ChecklistItem, ChecklistTemplateMap, ChecklistTemplateItem, TaskLogMessage } from "../types";
 import {ChecklistTemplatePanel} from "../components/ChecklistTemplatePanel";
 import {TaskChecklistEditor, TaskChecklistViewer} from "../components/TaskChecklist";
 import {ChecklistTemplateSlideOver} from "../components/ChecklistTemplateSlideOver";
@@ -111,7 +111,9 @@ const TaskCard: React.FC<{
   onReassign?: (id: string, assigneeId: string) => void;
   onToggleChecklist?: (taskId: string, itemId: string, done: boolean) => void;
   onUpdateTaskChecklist?: (taskId: string, next: ChecklistItem[]) => void;
-}> = ({ t, members, viewMode, onChangeStatus, onReassign, onToggleChecklist, onUpdateTaskChecklist }) => {
+  taskLogs?: Record<string, TaskLogMessage[]>;
+  onOpenTaskLog?: (taskId: string) => void;
+}> = ({ t, members, viewMode, onChangeStatus, onReassign, onToggleChecklist, onUpdateTaskChecklist, taskLogs, onOpenTaskLog }) => {
   const [open, setOpen] = React.useState(false);
   const assigneeName = members.find((m) => m.id === t.assigneeId)?.name ?? t.assigneeId;
   const [editingItem, setEditingItem] = React.useState<ChecklistItem | null>(null);
@@ -388,35 +390,61 @@ const TaskCard: React.FC<{
             )}
           </div>
 
-          {/* Quick Actions */}
-          <div className="shrink-0 flex flex-col items-end gap-1 pt-1">
-            {viewMode === "staff" && t.status === "todo" && (
-              <button
-                onClick={() => onChangeStatus?.(t.id, "in_progress")}
-                className="rounded-md border px-2 py-0.5 text-[11px] hover:bg-emerald-50"
-              >
-                Bắt đầu
-              </button>
-            )}
+          <div className="mt-3 flex items-center justify-between gap-2">
+            {/* BÊN TRÁI: thời gian tạo task dd/MM HH:mm */}
+            <div className="text-[11px] text-gray-400 whitespace-nowrap">
+              {t.createdAt && (
+                <>
+                  {new Date(t.createdAt).toLocaleDateString("vi-VN", {
+                    day: "2-digit",
+                    month: "2-digit",
+                  })}{" "}
+                  {formatTime(t.createdAt)}
+                </>
+              )}
+            </div>
 
-            {viewMode === "staff" && t.status === "in_progress" && (
+            {/* BÊN PHẢI: nhóm action buttons cùng 1 hàng */}
+            <div className="flex items-center gap-2">
+              {/* NÚT NHẬT KÝ – luôn enable */}
               <button
-                onClick={() => onChangeStatus?.(t.id, "awaiting_review")}
-                className="rounded-md border px-2 py-0.5 text-[11px] hover:bg-amber-50"
+                onClick={() => onOpenTaskLog?.(t.id)}
+                className="
+                  px-2 py-1 rounded-md border text-[11px]
+                  border-emerald-300 text-emerald-700 hover:bg-emerald-50
+                "
               >
-                Chờ duyệt
+                Nhật ký
               </button>
-            )}
 
-            {viewMode === "lead" &&
-              ["todo", "in_progress", "awaiting_review"].includes(t.status) && (
+              {viewMode === "staff" && t.status === "todo" && (
                 <button
-                  onClick={() => onChangeStatus?.(t.id, "done")}
+                  onClick={() => onChangeStatus?.(t.id, "in_progress")}
                   className="rounded-md border px-2 py-0.5 text-[11px] hover:bg-emerald-50"
                 >
-                  Hoàn tất
+                  Bắt đầu
                 </button>
               )}
+
+              {viewMode === "staff" && t.status === "in_progress" && (
+                <button
+                  onClick={() => onChangeStatus?.(t.id, "awaiting_review")}
+                  className="rounded-md border px-2 py-0.5 text-[11px] hover:bg-amber-50"
+                >
+                  Chờ duyệt
+                </button>
+              )}
+
+              {viewMode === "lead" &&
+                ["todo", "in_progress", "awaiting_review"].includes(t.status) && (
+                  <button
+                    onClick={() => onChangeStatus?.(t.id, "done")}
+                    className="rounded-md border px-2 py-0.5 text-[11px] hover:bg-emerald-50"
+                  >
+                    Hoàn tất
+                  </button>
+                )}
+            </div>
 
           </div>
         </div>
@@ -562,6 +590,8 @@ export const RightPanel: React.FC<{
   checklistTemplates?: ChecklistTemplateMap;
   setChecklistTemplates?: React.Dispatch<React.SetStateAction<ChecklistTemplateMap>>;
   applyTemplateToTasks?: (workTypeId: string, template: ChecklistTemplateItem[]) => void;
+  taskLogs?: Record<string, TaskLogMessage[]>;
+  onOpenTaskLog?: (taskId: string) => void;
 }> = ({
   tab,
   setTab,
@@ -584,6 +614,8 @@ export const RightPanel: React.FC<{
   checklistTemplates = {},
   setChecklistTemplates,
   applyTemplateToTasks,
+  taskLogs,
+  onOpenTaskLog,
 }) => {
   // Helper: kiểm tra task có phải của ngày hôm nay không
   const isToday = (iso?: string) => {
@@ -830,6 +862,8 @@ export const RightPanel: React.FC<{
                           onUpdateTaskChecklist={(taskId, next) => {
                             onUpdateTaskChecklist?.(taskId, next)
                           }}
+                          taskLogs={taskLogs}
+                          onOpenTaskLog={onOpenTaskLog}
                         />
                       ))}
                       {staffBuckets.inProgress.map((t) => (
@@ -844,6 +878,8 @@ export const RightPanel: React.FC<{
                           onUpdateTaskChecklist={(taskId, next) => {
                             onUpdateTaskChecklist?.(taskId, next)
                           }}
+                          taskLogs={taskLogs}
+                          onOpenTaskLog={onOpenTaskLog}
                         />
                       ))}
                     </div>
@@ -867,7 +903,9 @@ export const RightPanel: React.FC<{
                         viewMode="staff"
                         onChangeStatus={onChangeTaskStatus}
                         onReassign={onReassignTask}
-                        onToggleChecklist={onToggleChecklist}                        
+                        onToggleChecklist={onToggleChecklist}
+                        taskLogs={taskLogs}
+                        onOpenTaskLog={onOpenTaskLog}                       
                       />
                     ))}
                   </div>
@@ -1026,6 +1064,8 @@ export const RightPanel: React.FC<{
                                 onChangeStatus={onChangeTaskStatus}
                                 onReassign={onReassignTask}
                                 onToggleChecklist={onToggleChecklist}
+                                taskLogs={taskLogs}
+                                onOpenTaskLog={onOpenTaskLog}
                               />
                             ))}
                           </div>
@@ -1055,6 +1095,8 @@ export const RightPanel: React.FC<{
                                 onReassign={onReassignTask}
                                 onToggleChecklist={onToggleChecklist}
                                 onUpdateTaskChecklist={onUpdateTaskChecklist}
+                                taskLogs={taskLogs}
+                                onOpenTaskLog={onOpenTaskLog}
                               />
                             ))}
                           </div>
@@ -1087,6 +1129,8 @@ export const RightPanel: React.FC<{
                                 onChangeStatus={onChangeTaskStatus}
                                 onReassign={onReassignTask}
                                 onToggleChecklist={onToggleChecklist}
+                                taskLogs={taskLogs}
+                                onOpenTaskLog={onOpenTaskLog}
                               />
                             ))}
                           </div>

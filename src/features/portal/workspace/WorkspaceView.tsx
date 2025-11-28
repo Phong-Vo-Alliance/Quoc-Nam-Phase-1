@@ -13,6 +13,7 @@ import type {
   ReceivedInfo,
   ChecklistItem,
   ChecklistTemplateItem,
+  TaskLogMessage,
 } from "../types";
 // function scrollToMessage(id: number | string) {
 //   const el = document.getElementById(`msg-${id}`);
@@ -133,6 +134,8 @@ interface WorkspaceViewProps {
   onAssignInfo?: (info: ReceivedInfo) => void;
   onAssignFromMessage?: (msg: Message) => void;
   openTransferSheet?: (info: ReceivedInfo) => void;
+  onOpenTaskLog?: (taskId: string) => void;
+  taskLogs?: Record<string, TaskLogMessage[]>;
 }
 
 export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
@@ -182,6 +185,8 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
     onAssignInfo,
     onAssignFromMessage,
     openTransferSheet,
+    onOpenTaskLog,
+    taskLogs,
   } = props;
 
   
@@ -269,6 +274,9 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
           setTab={setTab}
           receivedInfos={receivedInfos}
           viewMode={viewMode}
+
+          onOpenTaskLog={onOpenTaskLog}
+          taskLogs={taskLogs}
         />
       </div>
 
@@ -311,6 +319,9 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
             onOpenGroupTransfer={openTransferSheet}
 
             applyTemplateToTasks={applyTemplateToTasks} 
+
+            taskLogs={taskLogs}
+            onOpenTaskLog={onOpenTaskLog}   
 
           />
 

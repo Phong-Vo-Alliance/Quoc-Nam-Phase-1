@@ -17,9 +17,18 @@ export const ToastContainer: React.FC<{
   <div className="fixed top-4 right-4 z-[9999] space-y-2">
     {toasts.map((t) => (
       <div key={t.id} className={"flex items-center gap-3 rounded-lg px-3 py-2 shadow-lg " + toastStyle[t.kind]}>
+        <span className="text-base">
+          {t.kind === "success" && "✔️"}
+          {t.kind === "info" && "ℹ️"}
+          {t.kind === "warning" && "⚠️"}
+          {t.kind === "error" && "⛔"}
+        </span>
         <span className="text-sm">{t.msg}</span>
-        <button className="ml-1 text-white/80 hover:text-white text-xs" onClick={() => onClose(t.id)}>
-          Đóng
+        <button
+          className="ml-1 px-2 py-0.5 rounded-md bg-white/20 text-white text-xs hover:bg-white/30 transition"
+          onClick={() => onClose(t.id)}
+        >
+          ✕
         </button>
       </div>
     ))}
