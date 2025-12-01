@@ -20,6 +20,7 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, } from "@/components/ui/select";
 
 /* =========================================================================
    Types
@@ -39,6 +40,9 @@ export type FileNode = {
   name: string;
   parentId?: string;
   ext?: "pdf" | "jpg" | "png" | "docx" | "xlsx";
+  /** Loại thuộc tính mà thư mục đang sử dụng (nếu có) */
+  attrTypeId?: string;
+
   attrs?: FolderAttribute[];
   level?: 0 | 1; // 0: folder gốc, 1: folder con
 };
@@ -46,6 +50,12 @@ export type FileNode = {
 type FolderAttrTemplate = {
   id: string;
   key: string;
+};
+
+type FolderAttrType = {
+  id: string;
+  name: string;
+  templates: FolderAttrTemplate[];
 };
 
 /* =========================================================================
@@ -115,11 +125,19 @@ function useDriveView(items: FileNode[]) {
 type DefaultAttrSettingsProps = {
   templates: FolderAttrTemplate[];
   onChange: (next: FolderAttrTemplate[]) => void;
+
+  /** Danh sách loại thuộc tính + loại đang chọn */
+  attrTypes?: FolderAttrType[];
+  selectedAttrTypeId?: string;
+  onChangeSelectedAttrTypeId?: (id: string) => void;
 };
 
 const DefaultAttrSettings: React.FC<DefaultAttrSettingsProps> = ({
   templates,
   onChange,
+  attrTypes,
+  selectedAttrTypeId,
+  onChangeSelectedAttrTypeId,
 }) => {
   const handleKeyChange = (id: string, key: string) => {
     onChange(
@@ -146,6 +164,32 @@ const DefaultAttrSettings: React.FC<DefaultAttrSettingsProps> = ({
         Khi tạo thư mục mới, hệ thống sẽ sinh sẵn các thuộc tính bên dưới. Bạn
         có thể chỉnh sửa để phù hợp với cách làm việc của đội nhóm.
       </div>
+
+      {attrTypes && attrTypes.length > 0 && (
+        <div className="flex items-center gap-2 text-[11px]">
+          <span className="text-emerald-900/80 whitespace-nowrap">
+            Loại thuộc tính:
+          </span>
+          <Select
+            value={selectedAttrTypeId}
+            onValueChange={onChangeSelectedAttrTypeId}
+          >
+            <SelectTrigger className="w-full h-7 px-2 text-[11px] rounded border border-emerald-200">
+              <SelectValue placeholder="Chọn loại thuộc tính" />
+            </SelectTrigger>
+
+            <SelectContent className="text-[11px]">
+              {attrTypes.map((t) => (
+                <SelectItem key={t.id} value={t.id} className="text-[11px]">
+                  {t.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+        </div>
+      )}
+
       <div className="space-y-1.5">
         {templates.map((t) => (
           <div key={t.id} className="flex items-center gap-2">
@@ -246,12 +290,32 @@ const FolderAttrEditor: React.FC<FolderAttrEditorProps> = ({
       <PopoverContent
         side="top"
         align="center"
-        className="w-82 rounded-xl border border-emerald-100 bg-white p-3 shadow-lg"
+        className="w-[380px] rounded-xl border border-gray-200 bg-white p-4 shadow-[0_8px_24px_rgba(0,0,0,0.06)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="text-xs font-semibold text-gray-800 mb-1.5">
-          Thuộc tính của thư mục &ldquo;{folder.name}&rdquo;
-        </div>
+        <div className="mb-3">
+          <div className="text-[13px] font-semibold text-gray-900">
+            Thuộc tính thư mục
+          </div>
+
+          <div className="mt-0.5 text-[11px] text-gray-500 flex items-center gap-1">
+            <span className="truncate">{folder.name}</span>
+
+            {folder.attrTypeId && (
+              <>
+                <span className="mx-1 text-gray-400">•</span> Loại:{" "}
+                <span className="text-[11px] text-emerald-700 font-medium">
+                  {
+                    (window as any).__attrTypes?.find(
+                      (t: any) => t.id === folder.attrTypeId
+                    )?.name || folder.attrTypeId
+                  }
+                </span>
+              </>
+            )}
+          </div>
+        </div>       
+
         {localAttrs.length === 0 && (
           <div className="mb-2 text-[11px] text-gray-500">
             {viewMode === "lead" ? (
@@ -262,7 +326,7 @@ const FolderAttrEditor: React.FC<FolderAttrEditorProps> = ({
           </div>
         )}
 
-        <div className="max-h-52 overflow-y-auto space-y-1.5">
+        {/* <div className="max-h-52 overflow-y-auto space-y-1.5">
           {localAttrs.map((a) => (
             <div key={a.id} className="flex items-center gap-2 text-[11px]">
               {viewMode === "lead" ? (
@@ -295,10 +359,48 @@ const FolderAttrEditor: React.FC<FolderAttrEditorProps> = ({
               )}
             </div>
           ))}
+        </div> */}
+        <div className="max-h-56 overflow-y-auto pr-1 space-y-2">
+          {localAttrs.map((a) => (
+            <div
+              key={a.id}
+              className="grid grid-cols-[120px_1fr_auto] items-center gap-2 text-[11px]"
+            >
+              {viewMode === "lead" ? (
+                <>
+                  <input
+                    className="rounded-md border border-gray-200 px-2 py-1 text-[11px] focus:border-emerald-400 focus:ring-emerald-400"
+                    value={a.key}
+                    onChange={(e) => handleChangeKey(a.id, e.target.value)}
+                  />
+                  <input
+                    className="rounded-md border border-gray-200 px-2 py-1 text-[11px] focus:border-emerald-400 focus:ring-emerald-400"
+                    value={a.value}
+                    onChange={(e) => handleChangeValue(a.id, e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleRemove(a.id)}
+                    className="text-[11px] px-1 text-rose-600 hover:text-rose-700"
+                  >
+                    X
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="truncate text-gray-500">{a.key}</span>
+                  <span className="truncate text-gray-800">
+                    {a.value || "{empty}"}
+                  </span>
+                </>
+              )}
+            </div>
+          ))}
         </div>
 
+
         {viewMode === "lead" && (
-          <div className="mt-2 flex items-center justify-between gap-2">
+          <div className="mt-3 flex justify-between items-center">
             <button
               type="button"
               onClick={handleAdd}
@@ -307,15 +409,17 @@ const FolderAttrEditor: React.FC<FolderAttrEditorProps> = ({
               <Plus className="h-3 w-3" />
               Thêm thuộc tính
             </button>
+
             <button
               type="button"
               onClick={handleSave}
-              className="rounded-md bg-emerald-600 px-3 py-1 text-[11px] font-medium text-white hover:bg-emerald-700"
+              className="rounded-md bg-emerald-600 px-3 py-1 text-[11px] font-medium text-white shadow-sm hover:bg-emerald-700"
             >
               Lưu
             </button>
           </div>
         )}
+
       </PopoverContent>
     </Popover>
   );
@@ -966,21 +1070,98 @@ export const FileManager: React.FC<FileManagerProps> = ({
     { id: "tmpl_sup", key: "NCC" },
   ];
 
-  const [attrTemplates, setAttrTemplates] = React.useState<FolderAttrTemplate[]>(
-    () =>
-      defaultFolderAttrs
+  const DEFAULT_ATTR_TYPE_ID = "attr_type_default";
+
+  
+
+  const [attrTypes, setAttrTypes] = React.useState<FolderAttrType[]>(() => {
+    const baseTemplates =
+      defaultFolderAttrs && defaultFolderAttrs.length > 0
         ? defaultFolderAttrs.map((t, idx) => ({
-            id: "tmpl_" + idx,
-            key: t.key,
-          }))
-        : builtInTemplates
-  );
+          id: "tmpl_" + idx,
+          key: t.key,
+        }))
+        : builtInTemplates;
+
+    return [
+      {
+        id: DEFAULT_ATTR_TYPE_ID,
+        name: "Loại thuộc tính mặc định",
+        templates: baseTemplates,
+      },
+      {
+        id: "attr_type_product_info",
+        name: "Thông tin sản phẩm",
+        templates: [
+          { id: "tmpl_p1", key: "Tên sản phẩm" },
+          { id: "tmpl_p2", key: "Mã SKU" },
+          { id: "tmpl_p3", key: "Thương hiệu" },
+          { id: "tmpl_p4", key: "Hạn dùng" },
+        ],
+      },
+      {
+        id: "attr_type_supplier",
+        name: "Thông tin nhà cung cấp",
+        templates: [
+          { id: "tmpl_s1", key: "Tên NCC" },
+          { id: "tmpl_s2", key: "Số điện thoại NCC" },
+          { id: "tmpl_s3", key: "Mã hợp đồng" },
+        ],
+      },
+      {
+        id: "attr_type_documents",
+        name: "Thông tin chứng từ",
+        templates: [
+          { id: "tmpl_d1", key: "Loại chứng từ" },
+          { id: "tmpl_d2", key: "Ngày cấp" },
+          { id: "tmpl_d3", key: "Người ký" },
+        ],
+      },
+    ];
+
+  });
+
+  // Expose attrTypes for FolderAttrEditor
+  // TODO: Sau này khi backend load attrTypes → FolderAttrEditor sẽ tự cập nhật.
+  React.useEffect(() => {
+    (window as any).__attrTypes = attrTypes;
+  }, [attrTypes]);
+
+  const [selectedAttrTypeId, setSelectedAttrTypeId] =
+    React.useState<string>(DEFAULT_ATTR_TYPE_ID);
+
+  const selectedAttrType =
+    attrTypes.find((t) => t.id === selectedAttrTypeId) ?? attrTypes[0];
+
+  const attrTemplates = selectedAttrType?.templates ?? [];
 
   const [showAttrSettings, setShowAttrSettings] = React.useState(false);
+
+  const [createFolderState, setCreateFolderState] = React.useState<{
+    open: boolean;
+    parentId?: string;
+    level: 0 | 1;
+  }>({ open: false, parentId: undefined, level: 0 });
+
+  const [newFolderName, setNewFolderName] = React.useState("Thư mục mới");
+
+  const [newFolderAttrTypeId, setNewFolderAttrTypeId] =
+    React.useState<string>(DEFAULT_ATTR_TYPE_ID);
+
+  const handleChangeAttrTemplates = (nextTemplates: FolderAttrTemplate[]) => {
+    setAttrTypes((prev) =>
+      prev.map((type) =>
+        type.id === (selectedAttrType?.id ?? selectedAttrTypeId)
+          ? { ...type, templates: nextTemplates }
+          : type
+      )
+    );
+  };
 
   React.useEffect(() => {
     onItemsChange?.(items);
   }, [items, onItemsChange]);
+
 
   const folders = React.useMemo(
     () => items.filter((x) => x.type === "folder"),
@@ -988,16 +1169,39 @@ export const FileManager: React.FC<FileManagerProps> = ({
   );
 
   const handleCreateFolder = (parentId?: string, level: 0 | 1 = 0) => {
-    const now = Date.now();
     const safeLevel: 0 | 1 = level === 1 ? 1 : 0;
+
+    setCreateFolderState({
+      open: true,
+      parentId,
+      level: safeLevel,
+    });
+
+    setNewFolderName("Thư mục mới");
+    setNewFolderAttrTypeId(selectedAttrType?.id ?? selectedAttrTypeId);
+  };
+
+  const handleConfirmCreateFolder = () => {
+    if (!createFolderState.open) return;
+
+    const now = Date.now();
+    const safeLevel: 0 | 1 = createFolderState.level === 1 ? 1 : 0;
+
+    const type =
+      attrTypes.find((t) => t.id === newFolderAttrTypeId) ??
+      selectedAttrType ??
+      attrTypes[0];
+
+    const templates = type?.templates ?? [];
 
     const newFolder: FileNode = {
       id: "fd_" + now,
       type: "folder",
-      name: "Thư mục mới",
-      parentId,
+      name: newFolderName.trim() || "Thư mục mới",
+      parentId: createFolderState.parentId,
       level: safeLevel,
-      attrs: attrTemplates.map((t, idx) => ({
+      attrTypeId: type?.id,
+      attrs: templates.map((t, idx) => ({
         id: `att_${now}_${idx}`,
         key: t.key,
         value: "",
@@ -1005,6 +1209,13 @@ export const FileManager: React.FC<FileManagerProps> = ({
     };
 
     setItems((prev) => [...prev, newFolder]);
+    setCreateFolderState({ open: false, parentId: undefined, level: 0 });
+    setNewFolderName("Thư mục mới");
+  };
+
+  const handleCancelCreateFolder = () => {
+    setCreateFolderState({ open: false, parentId: undefined, level: 0 });
+    setNewFolderName("Thư mục mới");
   };
 
   const handleMoveFile = (fileId: string, folderId: string | null) => {
@@ -1076,11 +1287,84 @@ export const FileManager: React.FC<FileManagerProps> = ({
   );
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 relative">
+      {/* Popup tạo thư mục mới: chọn loại thuộc tính */}
+      {viewMode === "lead" && createFolderState.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
+          <div className="w-full max-w-sm rounded-xl border bg-white p-4 shadow-lg">
+            <div className="mb-3">
+              <div className="text-xs font-semibold text-gray-900">
+                Tạo thư mục mới
+              </div>
+              <div className="mt-0.5 text-[11px] text-gray-500">
+                Chọn tên thư mục và loại thuộc tính. Hệ thống sẽ sinh sẵn các
+                thuộc tính mặc định cho thư mục này.
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="space-y-1">
+                <div className="text-[11px] font-medium text-gray-700">
+                  Tên thư mục
+                </div>
+                <input
+                  className="w-full rounded border border-gray-200 px-2 py-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  autoFocus
+                />
+              </div>
+
+              <div className="space-y-1">
+                <div className="text-[11px] font-medium text-gray-700">
+                  Loại thuộc tính
+                </div>
+                <Select
+                  value={newFolderAttrTypeId}
+                  onValueChange={(v) => setNewFolderAttrTypeId(v)}
+                >
+                  <SelectTrigger className="w-full h-7 px-2 text-[11px] rounded border border-gray-200">
+                    <SelectValue placeholder="Chọn loại thuộc tính" />
+                  </SelectTrigger>
+
+                  <SelectContent className="text-[11px]">
+                    {attrTypes.map((t) => (
+                      <SelectItem key={t.id} value={t.id} className="text-[11px]">
+                        {t.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="mt-3 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={handleCancelCreateFolder}
+                className="rounded border border-gray-200 px-2 py-1 text-[11px] text-gray-700 hover:bg-gray-50"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmCreateFolder}
+                className="rounded bg-emerald-600 px-3 py-1 text-[11px] font-medium text-white hover:bg-emerald-700"
+              >
+                Tạo thư mục
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {viewMode === "lead" && showAttrSettings && (
         <DefaultAttrSettings
           templates={attrTemplates}
-          onChange={setAttrTemplates}
+          onChange={handleChangeAttrTemplates}
+          attrTypes={attrTypes}
+          selectedAttrTypeId={selectedAttrTypeId}
+          onChangeSelectedAttrTypeId={setSelectedAttrTypeId}
         />
       )}
       {mode === "grid" ? grid : list}
