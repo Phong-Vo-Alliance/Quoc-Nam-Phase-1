@@ -49,6 +49,8 @@ export interface Task {
   groupId: ID;
   workTypeId: ID;
   workTypeName?: string;
+  checklistVariantId?: string;
+  checklistVariantName?: string;
   progressText?: string;
 
   sourceMessageId: ID;       // message gốc dùng để tạo task
@@ -149,6 +151,42 @@ export interface Message {
   taskId?: ID;
 }
 
+/**
+ * Message trong thread Nhật ký công việc của Task
+ * 1 Task <-> 1 thread, nên taskId cũng là threadId
+ */
+export interface TaskLogMessage {
+  /** Mã định danh message trong thread */
+  id: string;
+
+  /** Task / thread mà message này thuộc về */
+  taskId: ID;
+
+  /** Người gửi */
+  senderId: ID;
+  sender: string;
+
+  /** Kiểu tin nhắn (text / image / file / system) */
+  type: "text" | "image" | "file" | "system";
+
+  /** Nội dung chính (text hoặc caption) */
+  content?: string;
+
+  /** Thời gian gửi (ISO string, dùng cho hiển thị) */
+  time: string;
+  createdAt: ISODate;
+
+  /** Có phải tin của current user không (phục vụ align bên phải) */
+  isMine?: boolean;
+
+  /** File / ảnh đính kèm nếu có */
+  files?: FileAttachment[];
+  fileInfo?: FileAttachment;
+
+  /** Reply tới một message khác trong cùng thread */
+  replyTo?: Message["replyTo"];
+}
+
 /* ---------------- User Types ---------------- */
 export interface User {
   id: ID;
@@ -170,6 +208,13 @@ export interface Department {
   createdAt: ISODate;
 }
 
+export interface ChecklistVariant {
+  id: string;            // ví dụ: "nhanHang_kiemDem"
+  name: string;          // ví dụ: "Kiểm đếm"
+  description?: string;  // mô tả thêm nếu cần
+  isDefault?: boolean;   // variant mặc định cho workType
+}
+
 // ===== Group & Work Types =====
 export interface WorkType {
   id: ID;
@@ -177,6 +222,9 @@ export interface WorkType {
   name: string;        // "Nhận hàng", "Đổi trả", ...
   icon?: string;       // lucide icon name
   color?: string;      // brand subcolor cho chip/badge
+
+  /** Danh sách các dạng checklist con (Kiểm đếm / Lưu trữ / Thanh toán / ...) */
+  checklistVariants?: ChecklistVariant[];
 }
 
 export interface GroupMember {
@@ -272,5 +320,8 @@ export type ChecklistTemplateItem = {
 
 export type ChecklistTemplateMap = Record<
   string,               // workTypeId
-  ChecklistTemplateItem[]
+  Record<
+    string,             // checklistVariantId
+    ChecklistTemplateItem[]
+  >
 >;

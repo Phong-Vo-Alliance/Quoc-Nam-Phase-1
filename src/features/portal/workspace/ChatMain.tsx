@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Search, PanelRightClose, PanelRightOpen, MessageSquareText, Paperclip, Image as ImageIcon, AlarmClock, Type, SendHorizonal } from 'lucide-react';
 import { IconButton } from '@/components/ui/icon-button';
 import { Avatar, Badge } from '../components';
-import type { Message, Task, PinnedMessage, FileAttachment, GroupChat, ReceivedInfo, } from '../types';
+import type { Message, Task, PinnedMessage, FileAttachment, GroupChat, ReceivedInfo, TaskLogMessage } from '../types';
 import { MessageBubble } from "@/features/portal/components/MessageBubble";
 import { convertToPinnedMessage } from "@/features/portal/utils/convertToPinnedMessage";
 import { LinearTabs } from '../components/LinearTabs';
@@ -65,7 +65,9 @@ export const ChatMain: React.FC<{
   receivedInfos?: ReceivedInfo[];
   onAssignFromMessage?: (msg: Message) => void;
   setTab: (v: "info" | "order" | "tasks") => void;
-  viewMode?: ViewMode; // 'lead' | 'staff'
+  viewMode?: ViewMode; // 'lead' | 'staff'  
+  onOpenTaskLog?: (taskId: string) => void;
+  taskLogs?: Record<string, TaskLogMessage[]>
 }> = ({
   selectedGroup,
   currentUserId,
@@ -85,6 +87,8 @@ export const ChatMain: React.FC<{
   onAssignFromMessage,
   setTab,
   viewMode = "staff",
+  onOpenTaskLog, 
+  taskLogs = {},
 }) => {
   // const [showCloseMenu, setShowCloseMenu] = React.useState(false);
   // const [inputValue, setInputValue] = React.useState("");
@@ -309,6 +313,11 @@ export const ChatMain: React.FC<{
                 const quote = m.type === "text" ? m.content : `[${m.type}]`;
                 setInputValue(prev => (prev ? prev + "\n" : "") + `> ${quote}\n`);
               }}
+              onOpenTaskLog={(taskId) =>
+                onOpenTaskLog?.(taskId) // callback bubble -> ChatMain -> PortalWireframes
+              }
+              taskLogs={taskLogs}
+              currentUserId={currentUserId} 
               onPin={handlePinToggle}
               onOpenFile={handleOpenFile}
               onOpenImage={handleOpenImage}

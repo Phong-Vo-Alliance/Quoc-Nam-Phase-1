@@ -1,19 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ToastContainer, CloseNoteModal, FilePreviewModal } from './components';
-import type { LeadThread, Task, TaskStatus, ToastKind, ToastMsg, FileAttachment, PinnedMessage, GroupChat, Message, ReceivedInfo, WorkType, ChecklistItem } from './types';
+import type { LeadThread, Task, TaskStatus, ToastKind, ToastMsg, FileAttachment, PinnedMessage, GroupChat, Message, ReceivedInfo, WorkType, ChecklistItem, TaskLogMessage } from './types';
 import { WorkspaceView } from './workspace/WorkspaceView';
 import { TeamMonitorView } from './lead/TeamMonitorView';
 import { MainSidebar } from "./components/MainSidebar";
 import { ViewModeSwitcher } from "@/features/portal/components/ViewModeSwitcher";
 import { mockGroups as sidebarGroups, mockContacts } from "@/data/mockSidebar";
-import { mockGroup_VH_Kho, mockGroup_VH_TaiXe, mockDepartments } from "@/data/mockOrg";
+import { mockGroup_VH_Kho, mockGroup_VH_TaiXe, mockDepartments, mockChecklistTemplatesByVariant } from "@/data/mockOrg";
 import { mockTasks } from "@/data/mockTasks";
 import { mockMessagesByWorkType } from "@/data/mockMessages";
 import { DepartmentTransferSheet } from '@/components/sheet/DepartmentTransferSheet';
 import { AssignTaskSheet } from '@/components/sheet/AssignTaskSheet';
 import { GroupTransferSheet } from "@/components/sheet/GroupTransferSheet";
 import type { ChecklistTemplateMap, ChecklistTemplateItem } from './types';
-
+import { TaskLogThreadSheet } from "./workspace/TaskLogThreadSheet";
 
 export default function PortalWireframes() {
   // ---------- shared UI state ----------
@@ -85,6 +85,16 @@ export default function PortalWireframes() {
     selectedGroup?.defaultWorkTypeId ?? selectedGroup?.workTypes?.[0]?.id ?? "wt_default"
   );
 
+  // Danh sách "dạng checklist" (sub work type) của work type được chọn
+  const checklistVariants =
+    selectedGroup?.workTypes?.find((w) => w.id === selectedWorkTypeId)
+      ?.checklistVariants ?? [];
+
+  const defaultChecklistVariantId =
+    checklistVariants.find((v) => v.isDefault)?.id ||
+    checklistVariants[0]?.id ||
+    undefined;
+
   /// --- Import mock message data ---
   // Lấy ra workTypeKey tương ứng từ id (mapping thủ công hoặc từ group)
   const getWorkTypeKey = (workTypeId?: string) => {
@@ -138,6 +148,13 @@ export default function PortalWireframes() {
 
   // --- Toast store ---
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
+  // --- Task log (nhật ký công việc) ---
+  const [taskLogSheet, setTaskLogSheet] = useState<{
+    open: boolean;
+    taskId?: string;
+  }>({ open: false });
+
+  const [taskLogs, setTaskLogs] = useState<Record<string, TaskLogMessage[]>>({});
   const pushToast = (msg: string, kind: ToastKind = 'info') => {
     const id = Math.random().toString(36).slice(2);
     setToasts((t) => [...t, { id, kind, msg }]);
@@ -157,8 +174,8 @@ export default function PortalWireframes() {
     id: "grp_vh_kho", // mặc định mở nhóm “Vận hành - Kho Hàng”
   });
 
-  // Checklist Template theo WorkType
-  const [checklistTemplates, setChecklistTemplates] = React.useState<ChecklistTemplateMap>({});
+  // Checklist Template theo WorkType + Variant
+  const [checklistTemplates, setChecklistTemplates] = React.useState<ChecklistTemplateMap>(mockChecklistTemplatesByVariant);
 
   const [tasks, setTasks] = React.useState(() => structuredClone(mockTasks));
 
@@ -700,12 +717,35 @@ export default function PortalWireframes() {
     title,
     sourceMessageId,
     assigneeId,
+    checklistVariantId,
+    checklistVariantName,
   }: {
     title: string;
     sourceMessageId?: string;
     assigneeId?: string;
+    checklistVariantId?: string;
+    checklistVariantName?: string;
   }): void => {        
         
+    // Xác định WorkType & variant (ưu tiên variant được chọn từ AssignTaskSheet)
+    const wt = selectedGroup?.workTypes?.find((w) => w.id === selectedWorkTypeId);
+
+    let variantId = checklistVariantId;
+    let variantName = checklistVariantName;
+
+    if (!variantId) {
+      const defaultVariant =
+        wt?.checklistVariants?.find((v) => v.isDefault) ?? wt?.checklistVariants?.[0];
+
+      variantId = defaultVariant?.id;
+      variantName = defaultVariant?.name;
+    }
+
+    const tplItems =
+      variantId && checklistTemplates[selectedWorkTypeId]?.[variantId]
+        ? checklistTemplates[selectedWorkTypeId][variantId]
+        : [];
+
     const newTask: Task = {
       id: "task_" + Date.now(),
       title,
@@ -713,10 +753,13 @@ export default function PortalWireframes() {
       groupId: selectedGroup?.id ?? "",
       sourceMessageId: sourceMessageId ?? "",
       assigneeId: assigneeId ?? currentUserId, // nếu không có thì giao cho currentUser
-      assignedById: currentUser, // use currentUser (string) which exists in this scope
+      assignedById: currentUser,
       workTypeId: selectedWorkTypeId,
+      workTypeName: wt?.name,
+      checklistVariantId: variantId,
+      checklistVariantName: variantName,
       status: "todo",
-      checklist: (checklistTemplates[selectedWorkTypeId] ?? []).map(it => ({
+      checklist: tplItems.map((it) => ({
         id: "chk_" + Math.random().toString(36).slice(2),
         label: it.label,
         done: false,
@@ -726,7 +769,26 @@ export default function PortalWireframes() {
       updatedAt: new Date().toISOString(),
     };
 
+
     setTasks((prev) => [...prev, newTask]);
+    setTab("tasks");
+    setShowRight(true);
+
+    setTaskLogs((prev) => ({
+      ...prev,
+      [newTask.id]: [],
+    }));
+
+    // Liên kết task mới với message gốc (nếu có)    
+    if (sourceMessageId) {      
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === sourceMessageId
+            ? { ...m, taskId: newTask.id }
+            : m
+        )
+      );
+    }
 
     // Nếu assign từ ReceivedInfo → đổi trạng thái
     if (assignSheet.source === "receivedInfo" && assignSheet.info) {
@@ -767,6 +829,75 @@ export default function PortalWireframes() {
 
     pushToast("Đã chuyển thông tin sang nhóm mới.", "success");
   };
+
+    const handleSendTaskLogMessage = ({
+    content,
+    replyToId,
+  }: {
+    content: string;
+    replyToId?: string;
+  }) => {
+    if (!taskLogSheet.taskId) return;
+    const taskId = taskLogSheet.taskId;
+    const now = new Date();
+
+    const existing = taskLogs[taskId] ?? [];
+
+    let replyTo: TaskLogMessage["replyTo"] | undefined;
+    if (replyToId) {
+      const original = existing.find(m => m.id === replyToId);
+      if (original) {
+        const type =
+          original.type === "text" || original.type === "file" || original.type === "image"
+            ? original.type
+            : "text";
+        replyTo = {
+          id: original.id,
+          type,
+          sender: original.sender,
+          content: original.content,
+          // nếu sau này hỗ trợ ảnh/file trong log thì map thêm tại đây
+          fileInfo: original.fileInfo,
+        };
+      }
+    }
+
+    const newMsg: TaskLogMessage = {
+      id: "tlog_" + now.getTime().toString(36) + "_" + Math.random().toString(36).slice(2, 6),
+      taskId,
+      senderId: currentUserId,
+      sender: currentUser,
+      type: "text",
+      content,
+      time: now.toISOString(),
+      createdAt: now.toISOString(),
+      isMine: true,
+      files: [],
+      fileInfo: undefined,
+      replyTo,
+    };
+
+    setTaskLogs(prev => ({
+      ...prev,
+      [taskId]: [...(prev[taskId] ?? []), newMsg],
+    }));
+  };
+
+  // --- Task log sheet: task + message gốc + danh sách log ---
+  const activeTaskLogTask = React.useMemo(
+    () => (taskLogSheet.taskId ? tasks.find(t => t.id === taskLogSheet.taskId) : undefined),
+    [tasks, taskLogSheet.taskId]
+  );
+
+  const activeTaskLogSourceMessage = React.useMemo(() => {
+    if (!activeTaskLogTask?.sourceMessageId) return undefined;
+    return messages.find(m => m.id === activeTaskLogTask.sourceMessageId);
+  }, [messages, activeTaskLogTask?.sourceMessageId]);
+
+  const activeTaskLogMessages: TaskLogMessage[] =
+    taskLogSheet.taskId && taskLogs[taskLogSheet.taskId]
+      ? taskLogs[taskLogSheet.taskId]
+      : [];
 
   return (
     <div className="w-screen h-screen flex overflow-hidden bg-gray-50 text-gray-800">
@@ -879,6 +1010,11 @@ export default function PortalWireframes() {
             onAssignInfo={onAssignInfo}
             onAssignFromMessage={onAssignFromMessage}
             openTransferSheet={openTransferSheet}
+
+            onOpenTaskLog={(taskId) => {
+              setTaskLogSheet({ open: true, taskId });
+            }}
+            taskLogs={taskLogs}
           />          
         ) : (
           <TeamMonitorView
@@ -908,6 +1044,8 @@ export default function PortalWireframes() {
           message={assignSheet.message}
           info={assignSheet.info}
           members={groupMembers}
+          checklistVariants={checklistVariants}
+          defaultChecklistVariantId={defaultChecklistVariantId}
           onClose={() => setAssignSheet({ open: false })}
           onCreateTask={handleCreateTask}
         />
@@ -922,6 +1060,18 @@ export default function PortalWireframes() {
           onClose={() => setGroupTransferSheet({ open: false })}
           onConfirm={handleGroupTransferConfirm}
         />
+
+        <TaskLogThreadSheet
+          open={taskLogSheet.open}
+          onClose={() => setTaskLogSheet({ open: false })}
+          task={activeTaskLogTask}
+          sourceMessage={activeTaskLogSourceMessage}
+          messages={activeTaskLogMessages}
+          currentUserId={currentUserId}
+          members={groupMembers}
+          onSend={handleSendTaskLogMessage}
+        />
+
 
         {/* Toasts */}
         <ToastContainer toasts={toasts} onClose={removeToast} />

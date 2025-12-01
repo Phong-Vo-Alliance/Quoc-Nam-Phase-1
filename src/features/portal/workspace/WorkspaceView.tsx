@@ -13,6 +13,7 @@ import type {
   ReceivedInfo,
   ChecklistItem,
   ChecklistTemplateItem,
+  TaskLogMessage,
 } from "../types";
 // function scrollToMessage(id: number | string) {
 //   const el = document.getElementById(`msg-${id}`);
@@ -101,10 +102,8 @@ interface WorkspaceViewProps {
   onToggleChecklist: (taskId: string, itemId: string, done: boolean) => void;
   onUpdateTaskChecklist: (taskId: string, next: ChecklistItem[]) => void;
   applyTemplateToTasks?: (workTypeId: string, template: ChecklistTemplateItem[]) => void;
-  checklistTemplates: Record<string, ChecklistTemplateItem[]>;
-  setChecklistTemplates: (
-    v: React.SetStateAction<Record<string, ChecklistTemplateItem[]>>
-  ) => void;
+  checklistTemplates: Record<string, Record<string, ChecklistTemplateItem[]>>; // workTypeId -> variantId -> template
+  setChecklistTemplates: React.Dispatch<React.SetStateAction<Record<string, Record<string, ChecklistTemplateItem[]>>>>;
 
   // mode: "CSKH" | "THUMUA";
   // setMode: (v: "CSKH" | "THUMUA") => void;
@@ -133,6 +132,8 @@ interface WorkspaceViewProps {
   onAssignInfo?: (info: ReceivedInfo) => void;
   onAssignFromMessage?: (msg: Message) => void;
   openTransferSheet?: (info: ReceivedInfo) => void;
+  onOpenTaskLog?: (taskId: string) => void;
+  taskLogs?: Record<string, TaskLogMessage[]>;
 }
 
 export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
@@ -182,6 +183,8 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
     onAssignInfo,
     onAssignFromMessage,
     openTransferSheet,
+    onOpenTaskLog,
+    taskLogs,
   } = props;
 
   
@@ -269,6 +272,9 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
           setTab={setTab}
           receivedInfos={receivedInfos}
           viewMode={viewMode}
+
+          onOpenTaskLog={onOpenTaskLog}
+          taskLogs={taskLogs}
         />
       </div>
 
@@ -287,6 +293,11 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
             workTypeName={
               // nếu bạn đã có mảng workTypes [{id,name}]
               (workTypes?.find(w => w.id === selectedWorkTypeId)?.name) ?? "—"
+            }
+
+            checklistVariants={
+              selectedGroup?.workTypes?.find(w => w.id === selectedWorkTypeId)
+                ?.checklistVariants
             }
 
             /* Context người dùng + workType */
@@ -311,6 +322,9 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
             onOpenGroupTransfer={openTransferSheet}
 
             applyTemplateToTasks={applyTemplateToTasks} 
+
+            taskLogs={taskLogs}
+            onOpenTaskLog={onOpenTaskLog}   
 
           />
 
